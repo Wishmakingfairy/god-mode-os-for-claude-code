@@ -1,0 +1,7 @@
+{
+  "tool_name": "Write",
+  "tool_input": {
+    "file_path": "/Users/example/.claude/settings.json",
+    "content": "{\n  \"hooks\": {\n    \"PostToolUse\": [\"my-hook.sh\"]\n  }\n}"
+  }
+}

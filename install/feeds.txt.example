@@ -1,0 +1,11 @@
+# god-mode-os intelligence-monitor feeds
+# Format: URL|Label|MaxItems
+# Lines starting with # are ignored. MaxItems defaults to 4.
+# Copy to ~/.god-mode-os/feeds.txt to use.
+
+https://raw.githubusercontent.com/conoro/anthropic-engineering-rss-feed/main/anthropic_engineering_rss.xml|Anthropic Engineering|4
+https://hnrss.org/best?q=claude+OR+anthropic+OR+AI+agent|Hacker News AI|5
+https://simonwillison.net/atom/everything/|Simon Willison|3
+https://github.com/anthropics/claude-code/releases.atom|Claude Code Releases|3
+https://mshibanami.github.io/GitHubTrendingRSS/daily/python.xml|GitHub Trending Python|5
+https://mshibanami.github.io/GitHubTrendingRSS/daily/typescript.xml|GitHub Trending TypeScript|5

@@ -1,0 +1,6 @@
+# god-mode-os: folder-law-reminder forbidden write paths
+# One path per line. Writes (Write/Edit/Bash output) to these paths are blocked.
+# Copy to ~/.god-mode-os/forbidden-write-paths.txt to use.
+
+/tmp
+~/Downloads

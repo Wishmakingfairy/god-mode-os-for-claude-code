@@ -1,0 +1,8 @@
+# god-mode-os three-day-overview health check URLs
+# Format: URL|Label
+# Lines starting with # are ignored.
+# Copy to ~/.god-mode-os/health-check-urls.txt to use.
+
+https://example.com|Example Site
+# https://your-app.com|Your App
+# https://your-blog.com|Your Blog

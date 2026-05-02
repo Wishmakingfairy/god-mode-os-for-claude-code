@@ -1,0 +1,149 @@
+#!/bin/bash
+# intelligence-monitor.sh — daily scheduled job
+# Fetches RSS feeds, summarizes via Gemini if available, writes a digest markdown.
+# Falls back to raw signals if Gemini not installed.
+# Appends a one-line entry to INBOX.md and pings the user via terminal-notifier.
+#
+# Configuration (env vars):
+#   GMOS_HOME              Default: ~/.god-mode-os
+#   GMOS_INTEL_DIR         Default: $GMOS_HOME/intelligence
+#   GMOS_FEEDS             Path to feeds.txt. Default: $GMOS_HOME/feeds.txt
+#   GMOS_GEMINI_PROFILE    Optional one-line user profile for Gemini summarization
+#
+# Schedule via launchd (macOS) or cron (Linux). Example launchd plist in install/.
+
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
+set -uo pipefail
+
+GMOS_HOME="${GMOS_HOME:-$HOME/.god-mode-os}"
+INTEL_DIR="${GMOS_INTEL_DIR:-$GMOS_HOME/intelligence}"
+FEEDS_FILE="${GMOS_FEEDS:-$GMOS_HOME/feeds.txt}"
+DATE=$(date +%Y-%m-%d)
+OUTPUT="$INTEL_DIR/$DATE.md"
+LOG="$GMOS_HOME/intelligence-monitor.log"
+
+mkdir -p "$INTEL_DIR" "$GMOS_HOME"
+
+echo "[$(date '+%Y-%m-%d %H:%M')] Starting intelligence monitor" >> "$LOG"
+
+if [ -f "$OUTPUT" ]; then
+    echo "[$(date '+%Y-%m-%d %H:%M')] Already ran today, skipping" >> "$LOG"
+    exit 0
+fi
+
+# Default feeds if no config file present
+if [ ! -f "$FEEDS_FILE" ]; then
+    cat > "$FEEDS_FILE" <<'DEFAULT_FEEDS'
+https://raw.githubusercontent.com/conoro/anthropic-engineering-rss-feed/main/anthropic_engineering_rss.xml|Anthropic Engineering|4
+https://hnrss.org/best?q=claude+OR+anthropic+OR+AI+agent|Hacker News AI|5
+https://github.com/anthropics/claude-code/releases.atom|Claude Code Releases|3
+https://mshibanami.github.io/GitHubTrendingRSS/daily/python.xml|GitHub Trending Python|5
+https://mshibanami.github.io/GitHubTrendingRSS/daily/typescript.xml|GitHub Trending TypeScript|5
+DEFAULT_FEEDS
+fi
+
+fetch_rss() {
+    local url="$1" label="$2" max="${3:-4}"
+    python3 - "$url" "$label" "$max" << 'PYEOF' 2>/dev/null
+import sys, urllib.request, xml.etree.ElementTree as ET
+
+url, label, max_items = sys.argv[1], sys.argv[2], int(sys.argv[3])
+ns_map = {
+    'atom': 'http://www.w3.org/2005/Atom',
+    'dc': 'http://purl.org/dc/elements/1.1/'
+}
+
+try:
+    req = urllib.request.Request(url, headers={'User-Agent': 'god-mode-os/0.1'})
+    data = urllib.request.urlopen(req, timeout=8).read()
+    root = ET.fromstring(data)
+    items = []
+    for entry in root.findall('.//atom:entry', ns_map)[:max_items]:
+        title = entry.find('atom:title', ns_map)
+        link = entry.find('atom:link', ns_map)
+        t = title.text.strip() if title is not None and title.text else ''
+        l = link.get('href', '') if link is not None else ''
+        if t:
+            items.append(f'- [{t}]({l})')
+    if not items:
+        for item in root.findall('.//item')[:max_items]:
+            title = item.find('title')
+            link = item.find('link')
+            t = title.text.strip() if title is not None and title.text else ''
+            l = link.text.strip() if link is not None and link.text else ''
+            if t:
+                items.append(f'- [{t}]({l})')
+    if items:
+        print(f'\n### {label}')
+        print('\n'.join(items))
+except Exception as e:
+    print(f'\n### {label}\n- (fetch failed: {e})', file=sys.stderr)
+PYEOF
+}
+
+SIGNALS=""
+while IFS='|' read -r url label max; do
+    [ -z "${url:-}" ] && continue
+    [[ "$url" =~ ^# ]] && continue
+    SIGNALS+=$(fetch_rss "$url" "${label:-feed}" "${max:-4}")
+done < "$FEEDS_FILE"
+
+echo "[$(date '+%Y-%m-%d %H:%M')] Fetched signals (${#SIGNALS} chars)" >> "$LOG"
+
+DIGEST=""
+if command -v gemini &>/dev/null; then
+    PROFILE="${GMOS_GEMINI_PROFILE:-The reader is a developer who uses Claude Code daily and wants a tight digest of what is new in AI tooling, agent frameworks, and developer-tool ecosystems.}"
+    DIGEST=$(gemini -p "You are an intelligence monitor. $PROFILE
+
+Today's raw signals:
+$SIGNALS
+
+Write a concise digest (max 350 words). Format exactly as:
+
+# Intelligence Digest $DATE
+
+## Must Know
+(1-3 items only, genuinely important. Skip if nothing qualifies.)
+
+## Interesting
+(2-4 items worth a quick look)
+
+## New Tools / Repos to Test
+(only if directly useful)
+
+## Skip
+(1-2 items with one-line reason to ignore)
+
+Be brutal with filtering. If today is a slow news day, say so and keep it short. No em-dashes." 2>/dev/null) || DIGEST=""
+fi
+
+if [ -n "$DIGEST" ]; then
+    echo "$DIGEST" > "$OUTPUT"
+    echo "[$(date '+%Y-%m-%d %H:%M')] Wrote Gemini digest to $OUTPUT" >> "$LOG"
+else
+    cat > "$OUTPUT" << RAWEOF
+# Intelligence Digest $DATE
+> Gemini CLI not installed. Run: \`npm install -g @google/gemini-cli && gemini auth\`
+> Raw signals below, scan manually.
+
+$SIGNALS
+RAWEOF
+    echo "[$(date '+%Y-%m-%d %H:%M')] Wrote raw digest (no Gemini) to $OUTPUT" >> "$LOG"
+fi
+
+INBOX="$INTEL_DIR/INBOX.md"
+{
+    echo "## Intelligence digest $DATE"
+    echo "- [Open digest]($OUTPUT)"
+    echo ""
+} >> "$INBOX"
+
+TN=$(command -v terminal-notifier || true)
+if [ -n "$TN" ]; then
+    "$TN" -title "Intelligence digest ready" -subtitle "$DATE" \
+          -message "Click to open the digest." \
+          -open "file://$OUTPUT" -sound default 2>/dev/null || true
+fi
+
+echo "[$(date '+%Y-%m-%d %H:%M')] Done" >> "$LOG"
+exit 0

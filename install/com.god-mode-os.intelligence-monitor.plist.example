@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+god-mode-os: launchd job for daily intelligence-monitor
+Install:
+  cp install/com.god-mode-os.intelligence-monitor.plist.example \
+     ~/Library/LaunchAgents/com.god-mode-os.intelligence-monitor.plist
+  # edit ProgramArguments path to point at your install
+  launchctl load ~/Library/LaunchAgents/com.god-mode-os.intelligence-monitor.plist
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.god-mode-os.intelligence-monitor</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>REPLACE_WITH_REPO_PATH/hooks/intelligence/intelligence-monitor.sh</string>
+    </array>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>7</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>REPLACE_WITH_HOME/.god-mode-os/intelligence-monitor.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>REPLACE_WITH_HOME/.god-mode-os/intelligence-monitor.stderr.log</string>
+</dict>
+</plist>

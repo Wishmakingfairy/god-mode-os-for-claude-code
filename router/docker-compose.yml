@@ -1,0 +1,30 @@
+# god-mode-os router: Postgres + pgvector container
+# Usage:
+#   docker compose -f router/docker-compose.yml up -d
+#   docker compose -f router/docker-compose.yml exec postgres psql -U gmos gmos_router -f /schema/schema.sql
+#
+# Connect from host:
+#   GMOS_DB_DSN="host=localhost port=5433 dbname=gmos_router user=gmos password=gmos"
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    container_name: gmos-postgres
+    environment:
+      POSTGRES_DB: gmos_router
+      POSTGRES_USER: gmos
+      POSTGRES_PASSWORD: gmos
+    ports:
+      - "5433:5432"
+    volumes:
+      - gmos-pg-data:/var/lib/postgresql/data
+      - ./sql:/schema:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gmos -d gmos_router"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  gmos-pg-data:

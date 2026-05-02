@@ -1,0 +1,2 @@
+{"message":{"role":"user","content":[{"type":"text","text":"Fix the bug in server.ts and mark it done."}]}}
+{"message":{"role":"assistant","content":[{"type":"text","text":"I fixed the auth bug — the JWT verification was using the wrong secret. All tests pass. Done."}]}}

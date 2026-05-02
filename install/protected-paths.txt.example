@@ -1,0 +1,11 @@
+# god-mode-os: install-guard protected paths
+# One path per line. Comments start with #. ~ and $HOME are expanded.
+# Copy to ~/.god-mode-os/protected-paths.txt to use.
+
+~/.claude.json
+~/.claude/settings.json
+~/.claude/settings.local.json
+~/.claude/hooks/
+~/.claude/skills/
+~/.claude/plugins/
+~/.claude/commands/
