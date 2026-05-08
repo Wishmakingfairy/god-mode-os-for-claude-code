@@ -215,7 +215,7 @@ v0.1. Issues, ideas, and PRs welcome. See [CONTRIBUTING.md](CONTRIBUTING.md). Ne
 
 ## Author
 
-Built by **Harald Gabrans** ([@Wishmakingfairy on GitHub](https://github.com/Wishmakingfairy) · [LinkedIn](https://linkedin.com/in/haraldsgabrans)).
+Built by **Harald Gabrans Zukovs** ([@Wishmakingfairy on GitHub](https://github.com/Wishmakingfairy) · [LinkedIn](https://linkedin.com/in/haraldsgabrans)).
 
 If god-mode-os saves you time, the cheapest way to say thanks is to star the repo, file a real-use issue, or share what broke and how you fixed it. PRs welcome under [CONTRIBUTING.md](CONTRIBUTING.md).
 
