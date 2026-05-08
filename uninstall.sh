@@ -32,7 +32,7 @@ MODE="${1:---keep-data}"
 
 echo "==> Removing god-mode-os symlinks from $CC_HOOKS_DIR"
 REMOVED_CMDS=()
-for f in install-guard folder-law-reminder stop-validator session-retro discipline-toggle context-router; do
+for f in install-guard folder-law-reminder stop-validator session-retro discipline-toggle context-router intelligence-trigger; do
     link="$CC_HOOKS_DIR/$f.sh"
     if [ -L "$link" ] && [[ "$(readlink "$link")" == "$GMOS_REPO"* ]]; then
         # Match the shell-quoted form install.sh registered (handles paths with spaces).
@@ -96,15 +96,18 @@ if [ -f "$SETTINGS" ]; then
     fi
 fi
 
-echo "==> Unloading launchd plists"
-for plist in com.god-mode-os.intelligence-monitor com.god-mode-os.three-day-overview; do
-    target="$LAUNCH_AGENTS/$plist.plist"
-    if [ -f "$target" ]; then
-        launchctl unload "$target" 2>/dev/null || true
-        rm "$target"
-        echo "    removed $plist"
-    fi
-done
+# Legacy launchd cleanup: removes any plists left over from pre-SessionStart
+# installs of god-mode-os. Safe to run when no plists are present.
+if [ -d "$LAUNCH_AGENTS" ]; then
+    for plist in com.god-mode-os.intelligence-monitor com.god-mode-os.three-day-overview; do
+        target="$LAUNCH_AGENTS/$plist.plist"
+        if [ -f "$target" ]; then
+            launchctl unload "$target" 2>/dev/null || true
+            rm "$target"
+            echo "    (legacy) removed $plist plist"
+        fi
+    done
+fi
 
 # Only touch Docker if the routing tier was actually installed on this machine.
 ROUTING_MARKER="$GMOS_HOME/routing-installed"

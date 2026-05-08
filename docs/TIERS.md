@@ -55,9 +55,11 @@ Measured on a 721-skill corpus:
 | `GMOS_FILE_SCOPE` | Colon-separated paths to index for files (default: skills only) |
 | `GMOS_SKILL_SCOPE` | Path to `.claude/skills/` directory |
 
-## Tier 3, Intelligence (opt-in, requires launchd; optional Gemini CLI)
+## Tier 3, Intelligence (opt-in; optional Gemini CLI)
 
 Daily RSS digest summarized by Gemini and dropped into `~/.god-mode-os/intelligence/YYYY-MM-DD.md`. Plus a 72-hour retrospective every three days.
+
+The digest is fired by Claude Code's `SessionStart` event — there's no clock cron. The first time you start a Claude Code session each day, the trigger checks whether today's digest exists; if not, it spawns the generator in the background and returns immediately. Skip a day of Claude Code, you don't get a stale digest.
 
 ![intelligence tier demo](demos/intelligence.gif)
 
@@ -69,15 +71,15 @@ Daily RSS digest summarized by Gemini and dropped into `~/.god-mode-os/intellige
 
 ### Dependencies
 
-- launchd (macOS) or cron equivalent on Linux
-- Gemini CLI (optional). Without it, the digest writes raw signals.
+- Claude Code (provides the `SessionStart` event the trigger hooks into).
+- Gemini CLI (optional). Without it, the digest writes raw RSS signals.
 
 ### What ships
 
-- `hooks/intelligence/intelligence-monitor.sh`: launchd job, 7am daily, fetches feeds, summarizes via Gemini if available.
-- `hooks/intelligence/three-day-overview.sh`: 72-hour aggregator (corrections plus product health plus last 3 digests). Self-throttles to one run per 72h.
+- `hooks/intelligence/intelligence-trigger.sh`: SessionStart hook. Idempotent + async + self-throttled. Spawns the generators in background only when their output is stale.
+- `hooks/intelligence/intelligence-monitor.sh`: fetches feeds and writes the day's digest.
+- `hooks/intelligence/three-day-overview.sh`: 72-hour aggregator (corrections + product health + last 3 digests). Self-throttles to one run per 72h.
 - `install/feeds.txt.example`: 5 feeds curated for Claude Code power users.
-- `install/com.god-mode-os.*.plist.example`: launchd job templates.
 
 ### Configuration
 
@@ -87,6 +89,69 @@ Daily RSS digest summarized by Gemini and dropped into `~/.god-mode-os/intellige
 | `GMOS_FEEDS` | Path to feeds.txt |
 | `GMOS_GEMINI_PROFILE` | One-line user profile passed to Gemini for personalized summarization |
 | `GMOS_HEALTH_URLS` | Path to health-check-urls.txt for product uptime monitoring |
+
+### Reading the digest
+
+Each morning the digest lands as a markdown file at:
+
+```text
+~/.god-mode-os/intelligence/YYYY-MM-DD.md
+```
+
+Plus a running index at `~/.god-mode-os/intelligence/INBOX.md`.
+
+The simplest way to read it is to drop one of these in your shell rc (`~/.zshrc` / `~/.bashrc`):
+
+```bash
+# Read today's digest in the terminal
+alias digest='cat ~/.god-mode-os/intelligence/$(date +%Y-%m-%d).md'
+
+# Open today's digest in your editor
+alias digest-edit='${EDITOR:-vim} ~/.god-mode-os/intelligence/$(date +%Y-%m-%d).md'
+
+# Pretty-print with glow if installed
+alias digest='glow ~/.god-mode-os/intelligence/$(date +%Y-%m-%d).md'
+```
+
+### Send it elsewhere
+
+The digest is just a markdown file — pipe it wherever you want.
+
+**Post to Slack** (replace `WEBHOOK_URL` with your incoming-webhook URL):
+
+```bash
+DIGEST=~/.god-mode-os/intelligence/$(date +%Y-%m-%d).md
+curl -s -X POST -H 'Content-Type: application/json' \
+  --data "$(jq -Rs '{text: .}' < "$DIGEST")" \
+  "$WEBHOOK_URL"
+```
+
+**Post to Discord:**
+
+```bash
+DIGEST=~/.god-mode-os/intelligence/$(date +%Y-%m-%d).md
+curl -s -X POST -H 'Content-Type: application/json' \
+  --data "$(jq -Rs '{content: .}' < "$DIGEST")" \
+  "$DISCORD_WEBHOOK_URL"
+```
+
+**macOS desktop notification** (via `terminal-notifier`):
+
+```bash
+terminal-notifier \
+  -title "god-mode-os digest" \
+  -message "Today's digest is ready" \
+  -open file://$HOME/.god-mode-os/intelligence/$(date +%Y-%m-%d).md
+```
+
+**Email via system `mail`** (works if your machine has a configured mailer):
+
+```bash
+mail -s "god-mode-os digest $(date +%Y-%m-%d)" you@example.com \
+  < ~/.god-mode-os/intelligence/$(date +%Y-%m-%d).md
+```
+
+Drop any of these into the launchd plist as a `<key>StandardOutPath</key>` post-step or wire them as a separate hook. Native Slack / email / webhook delivery is on the v0.2 roadmap.
 
 ## Uninstall any tier
 

@@ -157,32 +157,20 @@ install_routing() {
 
 install_intelligence() {
     echo "==> Installing Intelligence tier"
-    if [ "$(uname)" != "Darwin" ]; then
-        echo "ERROR: Tier 3 (Intelligence) currently requires macOS launchd."
-        echo "       Linux/cron support is planned. Open an issue to request it."
-        exit 1
+
+    backup_settings
+    if link_hook "$GMOS_REPO/hooks/intelligence/intelligence-trigger.sh"; then
+        register_hook "SessionStart" "$CC_HOOKS_DIR/intelligence-trigger.sh"
     fi
-    # Escape sed replacement metacharacters in the substitution values so paths
-    # containing &, |, or \ don't corrupt the plist.
-    local repo_esc home_esc
-    repo_esc=$(printf '%s' "$GMOS_REPO" | sed -e 's/[&|\\]/\\&/g')
-    home_esc=$(printf '%s' "$HOME" | sed -e 's/[&|\\]/\\&/g')
-    mkdir -p "$LAUNCH_AGENTS"
-    for plist in com.god-mode-os.intelligence-monitor com.god-mode-os.three-day-overview; do
-        local src="$GMOS_REPO/install/$plist.plist.example"
-        local dst="$LAUNCH_AGENTS/$plist.plist"
-        sed "s|REPLACE_WITH_REPO_PATH|$repo_esc|g; s|REPLACE_WITH_HOME|$home_esc|g" "$src" > "$dst"
-        launchctl unload "$dst" 2>/dev/null || true
-        launchctl load "$dst"
-        echo "    installed $plist (loaded)"
-    done
 
     [ -f "$GMOS_HOME/feeds.txt" ] || cp "$GMOS_REPO/install/feeds.txt.example" "$GMOS_HOME/feeds.txt"
     [ -f "$GMOS_HOME/health-check-urls.txt" ] || cp "$GMOS_REPO/install/health-check-urls.txt.example" "$GMOS_HOME/health-check-urls.txt"
 
     echo ""
     echo "Intelligence tier installed."
-    echo "First digest: bash $GMOS_REPO/hooks/intelligence/intelligence-monitor.sh"
+    echo "Digest now fires off Claude Code's SessionStart event (no launchd cron)."
+    echo "First digest will land at \$GMOS_HOME/intelligence/$(date +%Y-%m-%d).md when you next start a session."
+    echo "Or run it now:  bash $GMOS_REPO/hooks/intelligence/intelligence-monitor.sh"
     echo "Edit feeds:   $GMOS_HOME/feeds.txt"
     echo "Edit health:  $GMOS_HOME/health-check-urls.txt"
     if ! command -v gemini >/dev/null 2>&1; then
