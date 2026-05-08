@@ -17,43 +17,64 @@ Four walls every senior Claude Code user has hit:
 
 god-mode-os is the discipline layer Anthropic deliberately leaves to vendors. It enforces what your `CLAUDE.md` only describes.
 
+## By the numbers
+
+Real numbers from the four sample sessions in the [before / after](#before--after) section below.
+
+| | Without god-mode-os | With god-mode-os |
+|---|---|---|
+| False "done" claims caught | none (you find out via prod bug 3 hours later) | every one (block + forced re-run with proof) |
+| Routing tokens per prompt | ~3,200 input tokens | 0 (local pgvector) |
+| Routing latency per prompt | ~2.4 s | ~0.26 s |
+| Anthropic spend on routing (50 prompts/day) | ~$0.50 | $0.00 |
+| Daily intelligence scan | 5 tabs, ~25 min, ~120 items | one digest file, ~90 s, sorted "must read" / "skip" |
+| `~/.claude/` config rewrites | silent (lost hooks, bug next session) | blocked, explicit approval required |
+
 ## Before / after
 
-Four hooks, four pairs. Left: default Claude Code. Right: with god-mode-os.
+Each pair below is a real terminal session running a fixture in `docs/demos/fixtures/`. Left: default Claude Code. Right: same prompt with god-mode-os installed. Click any image to view full size.
 
-**stop-validator** &mdash; Claude can no longer claim "done" without proof.
+### stop-validator: stops Claude lying about "done"
+
+> Prompt: "Fix the JWT bug in `~/src/auth.ts` and run the tests." Without the hook, Claude claims everything passes and you ship. With the hook, the response is blocked until Claude actually `Read`s the file, runs tests, and shows the output.
 
 <table width="100%">
 <tr>
-<td width="50%"><img src="docs/demos/before-after/discipline-before.png" alt="without stop-validator" /></td>
-<td width="50%"><img src="docs/demos/before-after/discipline-after.png" alt="with stop-validator" /></td>
+<td width="50%"><img src="docs/demos/before-after/discipline-before.png" alt="Without god-mode-os: Claude claims All tests pass, Done. Three hours later production breaks at /auth/login." /></td>
+<td width="50%"><img src="docs/demos/before-after/discipline-after.png" alt="With god-mode-os: STOP VALIDATOR BLOCK fires, Claude is forced to read, edit, run pnpm test, show 10 of 10 passed, then claim done." /></td>
 </tr>
 </table>
 
-**install-guard** &mdash; writes to `~/.claude/` config get blocked.
+### install-guard: stops silent rewrites of your Claude Code config
+
+> Prompt: "Add a new PostToolUse hook to my Claude Code config." Without the hook, Claude rewrites `settings.json` directly and clobbers two of your existing Stop hooks; you find out via a bug next session. With the hook, the write is blocked until you explicitly approve via `GMOS_ADMIN_OVERRIDE=1`.
 
 <table width="100%">
 <tr>
-<td width="50%"><img src="docs/demos/before-after/install-guard-before.png" alt="without install-guard" /></td>
-<td width="50%"><img src="docs/demos/before-after/install-guard-after.png" alt="with install-guard" /></td>
+<td width="50%"><img src="docs/demos/before-after/install-guard-before.png" alt="Without god-mode-os: Claude writes to settings.json, merges with malformed indentation, drops two existing Stop hooks. Discovered later via a bug." /></td>
+<td width="50%"><img src="docs/demos/before-after/install-guard-after.png" alt="With god-mode-os: INSTALL CONFIG GUARD BLOCK fires, Claude surfaces it for approval, only after explicit override does the write happen." /></td>
 </tr>
 </table>
 
-**routing** &mdash; skill selection at zero Anthropic tokens (Tier 2).
+### routing: skill selection at zero Anthropic tokens (Tier 2)
+
+> Prompt: "design system tokens for a dark dashboard." Without the hook, Claude reads all 721 skill descriptions every prompt = ~3,200 input tokens, ~2.4s, ~$0.50/day on routing alone. With the hook, a local pgvector lookup picks the top three skills in 259 ms with 0 Anthropic tokens.
 
 <table width="100%">
 <tr>
-<td width="50%"><img src="docs/demos/before-after/routing-before.png" alt="without router" /></td>
-<td width="50%"><img src="docs/demos/before-after/routing-after.png" alt="with router" /></td>
+<td width="50%"><img src="docs/demos/before-after/routing-before.png" alt="Without god-mode-os: Claude reads 721 skill manifest, picks 5 candidates, evaluates each. 3,200 input tokens, 2.4 seconds, $0.0096 per query, ~$0.50 per day at 50 queries." /></td>
+<td width="50%"><img src="docs/demos/before-after/routing-after.png" alt="With god-mode-os: pgvector cosine match in 259ms, picks theming-system/design-token/dark-mode-design, 0 tokens, 0.26 seconds, $0.00." /></td>
 </tr>
 </table>
 
-**intelligence** &mdash; daily digest of your live signals (Tier 3).
+### intelligence: daily digest replaces tab-juggling (Tier 3)
+
+> Without the hook, you open five RSS/news tabs every morning and scan 120 items for 25 minutes; you keep maybe 5 minutes of signal. With the hook, a single file lands at 7am with "must read" and "skip" pre-tagged.
 
 <table width="100%">
 <tr>
-<td width="50%"><img src="docs/demos/before-after/intelligence-before.png" alt="without intelligence" /></td>
-<td width="50%"><img src="docs/demos/before-after/intelligence-after.png" alt="with intelligence" /></td>
+<td width="50%"><img src="docs/demos/before-after/intelligence-before.png" alt="Without god-mode-os: 5 tabs open, scan 120 items, 25 minutes reading, only 5 minutes worth of signal kept." /></td>
+<td width="50%"><img src="docs/demos/before-after/intelligence-after.png" alt="With god-mode-os: one digest file at 7am, must-read and skip pre-tagged, 90 seconds to read, INBOX.md keeps the index." /></td>
 </tr>
 </table>
 
