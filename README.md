@@ -1,10 +1,25 @@
 # Claude Code, with discipline hooks
 
-The hooks that make Claude Code stop lying about "done", plus a router that stops it from burning your quota.
+**Stop Claude Code lying about "done". Stop it burning your quota on routing.**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Status: v0.1](https://img.shields.io/badge/status-v0.1-blue.svg)](CHANGELOG.md) [![macOS](https://img.shields.io/badge/platform-macOS-lightgrey.svg)](#compatibility)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Status: v0.1](https://img.shields.io/badge/status-v0.1-blue.svg)](CHANGELOG.md) [![macOS](https://img.shields.io/badge/platform-macOS-lightgrey.svg)](#compatibility) [![CI](https://github.com/Wishmakingfairy/god-mode-os/actions/workflows/ci.yml/badge.svg)](https://github.com/Wishmakingfairy/god-mode-os/actions/workflows/ci.yml)
 
 ![discipline tier demo](docs/demos/discipline.gif)
+
+god-mode-os is a layer of bash hooks for Claude Code that:
+
+- **Block false "done" claims.** Claude can't say it ran the tests if it never ran the tests.
+- **Protect `~/.claude/`.** Writes to your hooks, skills, and `settings.json` need explicit approval.
+- **Route prompts to skills locally.** pgvector + Ollama, sub-300 ms, zero Anthropic tokens.
+- **Replace your morning RSS scan.** One file at 7am, pre-tagged `must read` / `skip`.
+
+```bash
+git clone https://github.com/Wishmakingfairy/god-mode-os
+cd god-mode-os
+./install.sh                # ~60 seconds, only jq + python3 needed
+```
+
+> **Don't trust the README?** Run `bash smoke.sh` — it tests every load-bearing claim against the real code on your machine and prints a pass/fail receipt.
 
 ## Why this exists
 
@@ -17,7 +32,7 @@ Four walls every senior Claude Code user has hit:
 
 god-mode-os is the discipline layer Anthropic deliberately leaves to vendors. It enforces what your `CLAUDE.md` only describes.
 
-## What changes, in one screenful
+## What it does
 
 The table below summarises the four scenarios in the [before / after](#before--after) section. Each row links to a runnable fixture in [`docs/demos/fixtures/`](docs/demos/fixtures/) so you can reproduce locally.
 
@@ -99,26 +114,25 @@ Each pair below is a screen recording of a fixture script in [`docs/demos/fixtur
 
 ## Install
 
-```bash
-git clone https://github.com/Wishmakingfairy/god-mode-os
-cd god-mode-os
-./install.sh
-```
+The install command is above. To recap the steps:
 
-That installs the discipline hooks into `~/.claude/hooks/` and registers them in `~/.claude/settings.json`. ~60 seconds, no extra dependencies beyond `jq` and `python3`. Restart Claude Code to activate.
+1. `./install.sh` symlinks five hooks into `~/.claude/hooks/` and registers four entries in `~/.claude/settings.json`.
+2. The first install backs up your existing `settings.json` to `settings.json.gmos-backup`.
+3. Restart Claude Code to activate.
+4. To remove cleanly: `./uninstall.sh` (data kept) or `./uninstall.sh --purge` (data wiped). Or `bash hooks/discipline/discipline-toggle.sh off` for the kill switch without uninstalling.
 
-### Verify the README before you trust it
+Want the local skill router or daily intelligence digest? See [TIERS.md](docs/TIERS.md).
 
-Don't trust the claims above? Run:
+### Verify before you trust
+
+`smoke.sh` runs every load-bearing claim in this README against the real code on your machine and prints a plain-English pass/fail receipt.
 
 ```bash
 bash smoke.sh           # plain summary
-bash smoke.sh -v        # verbose: include 'how was this checked' for each claim
+bash smoke.sh -v        # verbose: include 'how' for each claim
 ```
 
-`smoke.sh` runs every load-bearing claim in this README against the real code on your machine. Each check shows what was tested and how. Hard-fails (exit 1) if any behavioural claim is false; soft-warns on timing claims that are machine-dependent. Fully isolated: writes to a temporary `HOME` and cleans up after itself, so it never touches your real `~/.god-mode-os`.
-
-Want the local skill router or daily intelligence digest? See [TIERS.md](docs/TIERS.md).
+Hard-fails (exit 1) on any behavioural claim that's false; soft-warns on timing claims. Fully isolated: writes to a temporary `HOME` and cleans up after itself, so it never touches your real `~/.god-mode-os`. CI runs the same script on every push, on both Linux and macOS.
 
 ## What ships in the default install
 
@@ -192,4 +206,4 @@ Built on top of [Claude Code](https://docs.claude.com/en/docs/agents-and-tools/c
 
 ---
 
-Star this repo if it saved you a "done" you would have shipped without proof.
+If `bash smoke.sh` printed `Every load-bearing README claim is TRUE on this machine`, that took 90 seconds and it never lied to you once. Star the repo. Then go install it.
