@@ -2,7 +2,7 @@
 
 The hooks that make Claude Code stop lying about "done", plus a router that stops it from burning your quota.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Status: v0.1](https://img.shields.io/badge/status-v0.1-blue.svg)](#) [![macOS](https://img.shields.io/badge/platform-macOS-lightgrey.svg)](#compatibility)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Status: v0.1](https://img.shields.io/badge/status-v0.1-blue.svg)](CHANGELOG.md) [![macOS](https://img.shields.io/badge/platform-macOS-lightgrey.svg)](#compatibility)
 
 ![discipline tier demo](docs/demos/discipline.gif)
 
@@ -20,8 +20,8 @@ god-mode-os is the discipline layer Anthropic deliberately leaves to vendors. It
 ## Install
 
 ```bash
-git clone https://github.com/Wishmakingfairy/god-mode-os ~/Claude/Code/god-mode-os
-cd ~/Claude/Code/god-mode-os
+git clone https://github.com/Wishmakingfairy/god-mode-os
+cd god-mode-os
 ./install.sh
 ```
 
@@ -41,15 +41,15 @@ The discipline tier hooks Claude Code's `Stop` and `PreToolUse` events.
 
 Five toggle env vars, all default on:
 
-```
+```text
 GMOS_CHECK_EM_DASH       em-dash hard ban
 GMOS_CHECK_TOOL_USE      no claims about files without reading
 GMOS_CHECK_CITATIONS     statistics need a source
-GMOS_CHECK_CONSISTENCY   detect contradiction with prior turn (Ollama)
-GMOS_CHECK_DODGE         detect capability denial (Ollama)
+GMOS_CHECK_CONSISTENCY   detect contradiction with prior turn (requires Ollama)
+GMOS_CHECK_DODGE         detect capability denial (requires Ollama)
 ```
 
-Set any to `0` to disable that check.
+Set any to `0` to disable that check. The two Ollama-dependent checks self-disable silently if `ollama` is not on `PATH`, so the default install with just `jq` and `python3` runs the first three out of the box.
 
 ## Who this is for
 
@@ -97,7 +97,7 @@ v0.1. Issues, ideas, and PRs welcome. See [CONTRIBUTING.md](CONTRIBUTING.md). Ne
 
 ## Credits
 
-Built on top of [Claude Code](https://docs.claude.com/en/docs/agents-and-tools/claude-code/overview), [pgvector](https://github.com/pgvector/pgvector), [Ollama](https://ollama.com), and [Charm VHS](https://github.com/charmbracelet/vhs) for the demo GIFs.
+Built on top of [Claude Code](https://docs.claude.com/en/docs/agents-and-tools/claude-code/overview), [pgvector](https://github.com/pgvector/pgvector), and [Ollama](https://ollama.com). Demo GIFs were rendered with [Charm VHS](https://github.com/charmbracelet/vhs) during development; users do not need it installed.
 
 ---
 

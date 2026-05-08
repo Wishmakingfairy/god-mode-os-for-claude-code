@@ -3,6 +3,10 @@
 # Local scratch
 docs/demos/fixtures/.q.json
 docs/demos/fixtures/.scratch/
+.test-scratch/
+.test-scratch*/
+.usertest/
+.bigscan*.sh
 
 # OS junk
 .DS_Store

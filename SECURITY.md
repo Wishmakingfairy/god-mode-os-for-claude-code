@@ -21,21 +21,28 @@ god-mode-os is designed to defend against accidental damage by AI agents (false 
 
 ## Reporting vulnerabilities
 
-Open a private security advisory on GitHub or email the maintainer. Do not file public issues for security bugs.
+Open a [private security advisory](https://github.com/Wishmakingfairy/god-mode-os/security/advisories/new) on GitHub. Do not file public issues for security bugs. Expect an initial response within 7 days.
 
 In scope:
+
 - A hook that bypasses its kill switch
 - A hook that elevates privileges or escapes the user's shell context
 - An install/uninstall flow that leaves dangerous state behind
 - A way for a malicious agent prompt to invoke arbitrary code outside the documented hook surface
 
 Out of scope:
+
 - An agent finding the documented `GMOS_ADMIN_OVERRIDE=1` escape hatch (this is intended)
 - A user with shell access modifying their own config
+
+## Tier 2 Postgres credentials
+
+The Tier 2 routing container ships with `user=gmos` / `password=gmos` and binds to `localhost:5433`. This is fine for the default deployment, where Postgres is reachable only from your own machine. **If you publish port 5433 to a wider network, change the password** in `router/docker-compose.yml` and update `GMOS_DB_DSN` accordingly.
 
 ## Reviewing the source before installing
 
 Strongly recommended for any tool that touches `~/.claude/`. Specifically read:
+
 - `install.sh` and `uninstall.sh`
 - Each hook in `hooks/discipline/`, `hooks/routing/`, `hooks/intelligence/`
 - The `.plist.example` files if you install Tier 3

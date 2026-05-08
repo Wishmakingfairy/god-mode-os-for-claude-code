@@ -10,7 +10,6 @@ C_USER='\033[1;36m'
 C_AGENT='\033[1;37m'
 C_DIM='\033[2m'
 C_OK='\033[1;32m'
-C_WARN='\033[1;33m'
 C_RESET='\033[0m'
 
 slow_print() {

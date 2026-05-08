@@ -24,7 +24,7 @@ echo "==> Starting Postgres+pgvector container"
 docker compose -f "$SCRIPT_DIR/docker-compose.yml" up -d
 
 echo "==> Waiting for Postgres health"
-for i in $(seq 1 30); do
+for _ in $(seq 1 30); do
     if docker exec gmos-postgres pg_isready -U gmos -d gmos_router >/dev/null 2>&1; then
         echo "    Postgres ready"
         break

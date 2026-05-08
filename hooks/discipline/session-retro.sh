@@ -46,7 +46,7 @@ SLUG=$(echo "$FIRST_USER" | tr '[:upper:]' '[:lower:]' | cut -c1-40)
 OUT="$RETRO_DIR/$DATE-$SLUG.md"
 
 EDITS=$(jq -r 'select(.message.content? != null) | .message.content[] | select(.type? == "tool_use" and (.name == "Edit" or .name == "Write" or .name == "MultiEdit")) | .input.file_path // empty' "$TRANSCRIPT_PATH" 2>/dev/null | sort -u)
-BASH_CMDS=$(jq -r 'select(.message.content? != null) | .message.content[] | select(.type? == "tool_use" and .name == "Bash") | .input.description // .input.command // empty' "$TRANSCRIPT_PATH" 2>/dev/null | head -20)
+BASH_LOG=$(jq -r 'select(.message.content? != null) | .message.content[] | select(.type? == "tool_use" and .name == "Bash") | .input.description // .input.command // empty' "$TRANSCRIPT_PATH" 2>/dev/null | head -20)
 
 RETRO_BODY=""
 if command -v gemini >/dev/null 2>&1; then
@@ -64,7 +64,7 @@ $(echo "$EDITS" | sed 's/^/- /' | head -20)
 
 ## Bash activity (first 20)
 \`\`\`
-$BASH_CMDS
+$BASH_LOG
 \`\`\`
 
 ## Synthesis

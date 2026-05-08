@@ -8,7 +8,6 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
 C_HEAD='\033[1;37m'
 C_DIM='\033[2m'
 C_OK='\033[1;32m'
-C_NUM='\033[1;33m'
 C_MUST='\033[1;36m'
 C_SKIP='\033[38;5;240m'   # darker gray for "focus-protection" framing
 C_RESET='\033[0m'

@@ -30,10 +30,15 @@ THRESHOLD="${GMOS_ROUTER_THRESHOLD:-0.55}"
 INPUT_FILE=$(mktemp) || exit 0
 cat > "$INPUT_FILE"
 
-"$ROUTER_PY" - "$INPUT_FILE" << PYEOF
+export GMOS_HOOK_INPUT_FILE="$INPUT_FILE"
+export GMOS_HOOK_ROUTER_QUERY="$ROUTER_QUERY"
+export GMOS_HOOK_TOP_SKILLS="$TOP_SKILLS"
+export GMOS_HOOK_THRESHOLD="$THRESHOLD"
+
+"$ROUTER_PY" - << 'PYEOF'
 import sys, json, os, subprocess
 
-input_file = sys.argv[1]
+input_file = os.environ["GMOS_HOOK_INPUT_FILE"]
 try:
     with open(input_file) as f:
         data = json.load(f)
@@ -47,9 +52,12 @@ prompt = data.get("prompt", "")
 if not prompt or len(prompt.split()) < 3:
     sys.exit(0)
 
-router_query = "$ROUTER_QUERY"
-top = int("$TOP_SKILLS")
-threshold = float("$THRESHOLD")
+router_query = os.environ["GMOS_HOOK_ROUTER_QUERY"]
+try:
+    top = int(os.environ.get("GMOS_HOOK_TOP_SKILLS", "3"))
+    threshold = float(os.environ.get("GMOS_HOOK_THRESHOLD", "0.55"))
+except ValueError:
+    sys.exit(0)
 
 cmd = [sys.executable, router_query, prompt[:800], "--merged",
        f"--skills-top={top}", "--files-top=2",

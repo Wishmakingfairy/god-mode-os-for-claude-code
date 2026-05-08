@@ -19,8 +19,9 @@ Thanks for considering a contribution. This project is v0.1; the surface is smal
 
 ## Tests
 
-- `tests/` runs `shellcheck` over all hooks plus a few smoke tests using `bats` (if installed).
-- For new hooks, include a fixture transcript or input JSON in `docs/demos/fixtures/` and a one-liner that demonstrates the hook firing on it.
+- CI (`.github/workflows/ci.yml`) runs `shellcheck` over every shell file, validates fixture JSON, syntax-checks Python, and runs an `install.sh` dry-run on a fresh test HOME.
+- `tests/` is reserved for functional hook tests (not yet implemented in v0.1).
+- For new hooks, include a fixture transcript or input JSON in `docs/demos/fixtures/` and a one-liner in your PR that demonstrates the hook firing on it.
 
 ## Commit messages
 
