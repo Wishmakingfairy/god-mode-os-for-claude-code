@@ -107,6 +107,17 @@ cd god-mode-os
 
 That installs the discipline hooks into `~/.claude/hooks/` and registers them in `~/.claude/settings.json`. ~60 seconds, no extra dependencies beyond `jq` and `python3`. Restart Claude Code to activate.
 
+### Verify the README before you trust it
+
+Don't trust the claims above? Run:
+
+```bash
+bash smoke.sh           # plain summary
+bash smoke.sh -v        # verbose: include 'how was this checked' for each claim
+```
+
+`smoke.sh` runs every load-bearing claim in this README against the real code on your machine. Each check shows what was tested and how. Hard-fails (exit 1) if any behavioural claim is false; soft-warns on timing claims that are machine-dependent. Fully isolated: writes to a temporary `HOME` and cleans up after itself, so it never touches your real `~/.god-mode-os`.
+
 Want the local skill router or daily intelligence digest? See [TIERS.md](docs/TIERS.md).
 
 ## What ships in the default install

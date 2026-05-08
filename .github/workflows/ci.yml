@@ -85,3 +85,10 @@ jobs:
           # Verify settings.json was actually cleaned (regression guard for the
           # bug where uninstall left dangling hook entries pointing at deleted symlinks)
           test "$(jq '.hooks // {} | length' "$HOME/.claude/settings.json")" = "0"
+      - name: Run smoke.sh (verify every README claim against the code)
+        env:
+          HOME: ${{ runner.temp }}/smoke-home
+        run: |
+          set -e
+          mkdir -p "$HOME"
+          bash smoke.sh
