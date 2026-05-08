@@ -2,7 +2,7 @@
 
 **Stop Claude Code lying about "done". Stop it burning your quota on routing.**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Status: v0.1](https://img.shields.io/badge/status-v0.1-blue.svg)](CHANGELOG.md) [![macOS](https://img.shields.io/badge/platform-macOS-lightgrey.svg)](#compatibility) [![CI](https://github.com/Wishmakingfairy/god-mode-os/actions/workflows/ci.yml/badge.svg)](https://github.com/Wishmakingfairy/god-mode-os/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Status: v0.1](https://img.shields.io/badge/status-v0.1-blue.svg)](CHANGELOG.md) [![macOS](https://img.shields.io/badge/platform-macOS-lightgrey.svg)](#compatibility)
 
 ![discipline tier demo](docs/demos/discipline.gif)
 
