@@ -17,18 +17,37 @@ Four walls every senior Claude Code user has hit:
 
 god-mode-os is the discipline layer Anthropic deliberately leaves to vendors. It enforces what your `CLAUDE.md` only describes.
 
-## By the numbers
+## What changes, in one screenful
 
-Real numbers from the four sample sessions in the [before / after](#before--after) section below.
+The table below summarises the four scenarios in the [before / after](#before--after) section. Each row links to a runnable fixture in [`docs/demos/fixtures/`](docs/demos/fixtures/) so you can reproduce locally.
 
-| | Without god-mode-os | With god-mode-os |
+| Scenario | Default Claude Code | With god-mode-os |
 |---|---|---|
-| False "done" claims caught | none (you find out via prod bug 3 hours later) | every one (block + forced re-run with proof) |
-| Routing tokens per prompt | ~3,200 input tokens | 0 (local pgvector) |
-| Routing latency per prompt | ~2.4 s | ~0.26 s |
-| Anthropic spend on routing (50 prompts/day) | ~$0.50 | $0.00 |
-| Daily intelligence scan | 5 tabs, ~25 min, ~120 items | one digest file, ~90 s, sorted "must read" / "skip" |
-| `~/.claude/` config rewrites | silent (lost hooks, bug next session) | blocked, explicit approval required |
+| [stop-validator](#stop-validator-stops-claude-lying-about-done) | "All tests pass. Done." (no tool use shown) → bug ships | block fires until Claude `Read`s the file, runs tests, shows `10 passed` |
+| [install-guard](#install-guard-stops-silent-rewrites-of-your-claude-code-config) | silent rewrite of `~/.claude/settings.json`; two existing hooks dropped | blocked until you set `GMOS_ADMIN_OVERRIDE=1` |
+| [routing](#routing-skill-selection-at-zero-anthropic-tokens-tier-2) | Claude reads ~721 skill descriptions per prompt to pick (typical Tier-2-style routing pattern) | local pgvector cosine match, **measured at 0.26 s, 0 Anthropic tokens** on the author's setup |
+| [intelligence](#intelligence-daily-digest-replaces-tab-juggling-tier-3) | open 5 RSS/news tabs every morning, scan the unsorted firehose | one file at 7am, `must read` / `skip` pre-tagged |
+
+**Routing per prompt, visualised (lower is better):**
+
+```text
+Input tokens spent on routing
+  default       █████████████████████████████████████████  ~3,200 *
+  god-mode-os   ▏                                              0
+
+Routing latency
+  default       ███████████████████████                    ~2.4 s *
+  god-mode-os   ██                                          0.26 s
+
+Anthropic spend per prompt
+  default       ███████████████████████                    ~$0.0096 *
+  god-mode-os   ▏                                          $0.0000
+
+* Default Claude Code numbers are estimates based on Claude reading a
+  721-skill manifest at typical prompt length, not a measurement.
+  god-mode-os numbers are real local measurements on the author's
+  machine. Reproduce yourself: docs/demos/fixtures/before-after-routing-*.sh.
+```
 
 ## Before / after
 
@@ -58,7 +77,7 @@ Each pair below is a real terminal session running a fixture in `docs/demos/fixt
 
 ### routing: skill selection at zero Anthropic tokens (Tier 2)
 
-> Prompt: "design system tokens for a dark dashboard." Without the hook, Claude reads all 721 skill descriptions every prompt = ~3,200 input tokens, ~2.4s, ~$0.50/day on routing alone. With the hook, a local pgvector lookup picks the top three skills in 259 ms with 0 Anthropic tokens.
+> Prompt: "design system tokens for a dark dashboard." Without the hook, Claude has to read the entire skill manifest each prompt to pick — at 721 skills that lands around 3,200 input tokens, ~2.4 s, ~$0.0096 per query (estimate). With the hook, a local pgvector cosine match picks the top three skills in **259 ms** with **0 Anthropic tokens** (measured).
 
 <table width="100%">
 <tr>
@@ -69,7 +88,7 @@ Each pair below is a real terminal session running a fixture in `docs/demos/fixt
 
 ### intelligence: daily digest replaces tab-juggling (Tier 3)
 
-> Without the hook, you open five RSS/news tabs every morning and scan 120 items for 25 minutes; you keep maybe 5 minutes of signal. With the hook, a single file lands at 7am with "must read" and "skip" pre-tagged.
+> The illustrative "before" reflects how Claude Code power users typically scan the firehose: HN best, Anthropic blog, Simon Willison, GitHub trending, Claude Code releases. Most of what you scan is noise. The "after" is the actual digest format god-mode-os writes at 7am: one markdown file, items pre-sorted into "must read" and "skip", a 90-second read.
 
 <table width="100%">
 <tr>
