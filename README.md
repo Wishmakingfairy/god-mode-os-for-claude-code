@@ -21,12 +21,12 @@ god-mode-os is the discipline layer Anthropic deliberately leaves to vendors. It
 
 The table below summarises the four scenarios in the [before / after](#before--after) section. Each row links to a runnable fixture in [`docs/demos/fixtures/`](docs/demos/fixtures/) so you can reproduce locally.
 
-| Scenario | Default Claude Code | With god-mode-os |
+| Scenario | Default Claude Code (typical) | With god-mode-os |
 |---|---|---|
-| [stop-validator](#stop-validator-stops-claude-lying-about-done) | "All tests pass. Done." (no tool use shown) → bug ships | block fires until Claude `Read`s the file, runs tests, shows `10 passed` |
-| [install-guard](#install-guard-stops-silent-rewrites-of-your-claude-code-config) | silent rewrite of `~/.claude/settings.json`; two existing hooks dropped | blocked until you set `GMOS_ADMIN_OVERRIDE=1` |
-| [routing](#routing-skill-selection-at-zero-anthropic-tokens-tier-2) | Claude reads ~721 skill descriptions per prompt to pick (typical Tier-2-style routing pattern) | local pgvector cosine match, **measured at 0.26 s, 0 Anthropic tokens** on the author's setup |
-| [intelligence](#intelligence-daily-digest-replaces-tab-juggling-tier-3) | open 5 RSS/news tabs every morning, scan the unsorted firehose | one file at 7am, `must read` / `skip` pre-tagged |
+| [stop-validator](#stop-validator-stops-claude-lying-about-done) | "All tests pass. Done." with no tool use to back it | block fires; agent rewrites with `Read` + actual test run |
+| [install-guard](#install-guard-stops-silent-rewrites-of-your-claude-code-config) | `Write` to `~/.claude/settings.json` proceeds; existing entries can be dropped | blocked until `GMOS_ADMIN_OVERRIDE=1` |
+| [routing](#routing-skill-selection-at-zero-anthropic-tokens-tier-2) | Claude reads the full skill manifest each prompt to pick (~721 descriptions in the author's config) | local pgvector cosine match: **0 Anthropic tokens** by design, **sub-300 ms typical** on the author's setup |
+| [intelligence](#intelligence-daily-digest-replaces-tab-juggling-tier-3) | open multiple RSS / news tabs every morning, scan the unsorted firehose | one file at 7am, `must read` / `skip` pre-tagged |
 
 **Routing per prompt, visualised (lower is better):**
 
@@ -51,11 +51,11 @@ Anthropic spend per prompt
 
 ## Before / after
 
-Each pair below is a real terminal session running a fixture in `docs/demos/fixtures/`. Left: default Claude Code. Right: same prompt with god-mode-os installed. Click any image to view full size.
+Each pair below is a screen recording of a fixture script in [`docs/demos/fixtures/`](docs/demos/fixtures/). The fixtures *depict* the scenario the hook is meant to address; the hooks themselves are real bash and run against your live Claude Code sessions (verify with `./install.sh && cat ~/.claude/hooks/`). Left: default Claude Code behaviour. Right: same prompt with god-mode-os installed.
 
 ### stop-validator: stops Claude lying about "done"
 
-> Prompt: "Fix the JWT bug in `~/src/auth.ts` and run the tests." Without the hook, Claude claims everything passes and you ship. With the hook, the response is blocked until Claude actually `Read`s the file, runs tests, and shows the output.
+> Prompt: "Fix the JWT bug in `~/src/auth.ts` and run the tests." A known Claude Code failure mode: the agent says "all tests pass, done" without actually running them, and you ship the regression. The stop-validator hook blocks any final response that claims about a file path without a recent `Read` / `Grep` / `Bash` of that path — Claude is forced to rewrite the response with proof.
 
 <table width="100%">
 <tr>
@@ -66,7 +66,7 @@ Each pair below is a real terminal session running a fixture in `docs/demos/fixt
 
 ### install-guard: stops silent rewrites of your Claude Code config
 
-> Prompt: "Add a new PostToolUse hook to my Claude Code config." Without the hook, Claude rewrites `settings.json` directly and clobbers two of your existing Stop hooks; you find out via a bug next session. With the hook, the write is blocked until you explicitly approve via `GMOS_ADMIN_OVERRIDE=1`.
+> Prompt: "Add a new PostToolUse hook to my Claude Code config." Without a guard, an agent with `Write` access on `~/.claude/settings.json` can re-serialise the file with new entries — and risk dropping or malforming the existing ones. With the install-guard hook, any `Write` / `Edit` / `Bash` against `~/.claude/settings.json`, `~/.claude/hooks/`, or `~/.claude/skills/` is blocked until the user re-runs with `GMOS_ADMIN_OVERRIDE=1`.
 
 <table width="100%">
 <tr>
@@ -77,7 +77,7 @@ Each pair below is a real terminal session running a fixture in `docs/demos/fixt
 
 ### routing: skill selection at zero Anthropic tokens (Tier 2)
 
-> Prompt: "design system tokens for a dark dashboard." Without the hook, Claude has to read the entire skill manifest each prompt to pick — at 721 skills that lands around 3,200 input tokens, ~2.4 s, ~$0.0096 per query (estimate). With the hook, a local pgvector cosine match picks the top three skills in **259 ms** with **0 Anthropic tokens** (measured).
+> Prompt: "design system tokens for a dark dashboard." Without the hook, Claude reads the skill manifest each prompt to pick — at 721 skills, this is around 3,200 input tokens / ~2.4 s / ~$0.0096 per query (estimate, varies with manifest size and prompt length). With the hook, the router uses a local pgvector cosine match. The architecture sends **0 Anthropic tokens** for routing (no API call is made). The latency on the author's setup is **sub-300 ms** typical; the live measurement loop is in [`docs/demos/fixtures/router-demo.sh`](docs/demos/fixtures/router-demo.sh).
 
 <table width="100%">
 <tr>
