@@ -1,5 +1,7 @@
 # Claude Code, with discipline hooks
 
+by [@Wishmakingfairy](https://github.com/Wishmakingfairy)
+
 **Stop Claude Code lying about "done". Stop it burning your quota on routing.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE) [![Status: v0.1](https://img.shields.io/badge/status-v0.1-blue.svg)](CHANGELOG.md) [![macOS](https://img.shields.io/badge/platform-macOS-lightgrey.svg)](#compatibility)
@@ -156,6 +158,21 @@ GMOS_CHECK_DODGE         detect capability denial (requires Ollama)
 
 Set any to `0` to disable that check. The two Ollama-dependent checks self-disable silently if `ollama` is not on `PATH`, so the default install with just `jq` and `python3` runs the first three out of the box.
 
+## Customize
+
+Everything is configurable via either an env var or a plain text file in `~/.god-mode-os/`. Edit, save, restart Claude Code; nothing to redeploy.
+
+| What you can change | Where | Default |
+|---|---|---|
+| Which discipline checks fire | `GMOS_CHECK_*` env vars | all 5 on |
+| Paths install-guard protects | `~/.god-mode-os/protected-paths.txt` | `~/.claude/{settings.json, hooks/, skills/, plugins/, commands/}` |
+| Paths folder-law-reminder blocks | `~/.god-mode-os/forbidden-write-paths.txt` | `/tmp` and `~/Downloads` |
+| RSS feeds for the daily digest (Tier 3) | `~/.god-mode-os/feeds.txt` | five Claude-relevant feeds |
+| Health-check URLs (Tier 3) | `~/.god-mode-os/health-check-urls.txt` | empty by default |
+| Postgres DSN, Ollama URL, embed model (Tier 2) | `GMOS_DB_DSN`, `GMOS_OLLAMA_URL`, `GMOS_EMBED_MODEL` env vars | localhost defaults |
+| Kill switch (disable everything, no uninstall) | `~/.claude/.god-mode-disabled` (touch to enable) | absent |
+| Per-command escape hatch | `GMOS_ADMIN_OVERRIDE=1` | unset |
+
 ## Who this is for
 
 You probably want this if you run Claude Code more than 3 hours a day, you have blown through your Max quota and don't know where the tokens went, you have caught Claude claiming "all tests pass" when they didn't, or you have rebuilt your own hook setup at least once.
@@ -195,6 +212,12 @@ Tested on macOS. Tier 1 hooks should work on Linux unchanged. Notifications use 
 ## Contributing
 
 v0.1. Issues, ideas, and PRs welcome. See [CONTRIBUTING.md](CONTRIBUTING.md). New discipline checks must be opt-in by default.
+
+## Author
+
+Built by **Harald Gabrans** ([@Wishmakingfairy on GitHub](https://github.com/Wishmakingfairy) · [LinkedIn](https://linkedin.com/in/haraldsgabrans)).
+
+If god-mode-os saves you time, the cheapest way to say thanks is to star the repo, file a real-use issue, or share what broke and how you fixed it. PRs welcome under [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
