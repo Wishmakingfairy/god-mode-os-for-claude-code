@@ -17,6 +17,46 @@ Four walls every senior Claude Code user has hit:
 
 god-mode-os is the discipline layer Anthropic deliberately leaves to vendors. It enforces what your `CLAUDE.md` only describes.
 
+## Before / after
+
+Four hooks, four pairs. Left: default Claude Code. Right: with god-mode-os.
+
+**stop-validator** &mdash; Claude can no longer claim "done" without proof.
+
+<table width="100%">
+<tr>
+<td width="50%"><img src="docs/demos/before-after/discipline-before.png" alt="without stop-validator" /></td>
+<td width="50%"><img src="docs/demos/before-after/discipline-after.png" alt="with stop-validator" /></td>
+</tr>
+</table>
+
+**install-guard** &mdash; writes to `~/.claude/` config get blocked.
+
+<table width="100%">
+<tr>
+<td width="50%"><img src="docs/demos/before-after/install-guard-before.png" alt="without install-guard" /></td>
+<td width="50%"><img src="docs/demos/before-after/install-guard-after.png" alt="with install-guard" /></td>
+</tr>
+</table>
+
+**routing** &mdash; skill selection at zero Anthropic tokens (Tier 2).
+
+<table width="100%">
+<tr>
+<td width="50%"><img src="docs/demos/before-after/routing-before.png" alt="without router" /></td>
+<td width="50%"><img src="docs/demos/before-after/routing-after.png" alt="with router" /></td>
+</tr>
+</table>
+
+**intelligence** &mdash; daily digest of your live signals (Tier 3).
+
+<table width="100%">
+<tr>
+<td width="50%"><img src="docs/demos/before-after/intelligence-before.png" alt="without intelligence" /></td>
+<td width="50%"><img src="docs/demos/before-after/intelligence-after.png" alt="with intelligence" /></td>
+</tr>
+</table>
+
 ## Install
 
 ```bash

@@ -6,6 +6,12 @@ god-mode-os ships in three tiers. The default install (`./install.sh`) sets up T
 
 What ships and how it works is documented in the [main README](../README.md). 60-second install, just `jq` + `python3` + bash.
 
+![discipline tier demo](demos/discipline.gif)
+
+The install-guard hook in action, blocking a write to a protected path:
+
+![install-guard demo](demos/install-guard.gif)
+
 ## Tier 2, Routing (opt-in, requires Docker + Ollama)
 
 Local pgvector-backed skill routing. Claude's `UserPromptSubmit` hook calls a local query that returns the top 3 skills via cosine similarity, sub-300ms, zero Anthropic tokens.
