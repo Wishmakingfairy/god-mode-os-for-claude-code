@@ -34,7 +34,7 @@ This Code of Conduct applies within all community spaces, and also applies when 
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the project maintainers via a [private security advisory](https://github.com/Wishmakingfairy/god-mode-os/security/advisories/new) or by opening a confidential issue. All complaints will be reviewed and investigated promptly and fairly.
+Instances of abusive, harassing, or otherwise unacceptable behavior may be reported to the project maintainers via a [private security advisory](https://github.com/Wishmakingfairy/god-mode-os-for-claude-code/security/advisories/new) or by opening a confidential issue. All complaints will be reviewed and investigated promptly and fairly.
 
 ## Attribution
 

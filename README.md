@@ -16,8 +16,8 @@ god-mode-os is a layer of bash hooks for Claude Code that:
 - **Replace your morning RSS scan.** One file at 7am, pre-tagged `must read` / `skip`.
 
 ```bash
-git clone https://github.com/Wishmakingfairy/god-mode-os
-cd god-mode-os
+git clone https://github.com/Wishmakingfairy/god-mode-os-for-claude-code
+cd god-mode-os-for-claude-code
 ./install.sh                # ~60 seconds, only jq + python3 needed
 ```
 

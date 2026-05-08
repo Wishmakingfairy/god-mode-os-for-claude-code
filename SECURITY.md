@@ -17,11 +17,11 @@ god-mode-os is designed to defend against accidental damage by AI agents (false 
 - `~/.claude/hooks/`: creates symlinks to scripts in this repo. Existing files are not modified.
 - `~/.claude/settings.json`: adds entries via `jq`. First run creates a backup at `settings.json.gmos-backup`.
 - `~/.god-mode-os/`: created on demand. All state, logs, retros, digests live here.
-- `~/Library/LaunchAgents/com.god-mode-os.*.plist` (Tier 3 only): scheduled jobs.
+- Tier 3 (Intelligence) fires off Claude Code's `SessionStart` event via a hook — no launchd, no cron job.
 
 ## Reporting vulnerabilities
 
-Open a [private security advisory](https://github.com/Wishmakingfairy/god-mode-os/security/advisories/new) on GitHub. Do not file public issues for security bugs. Expect an initial response within 7 days.
+Open a [private security advisory](https://github.com/Wishmakingfairy/god-mode-os-for-claude-code/security/advisories/new) on GitHub. Do not file public issues for security bugs. Expect an initial response within 7 days.
 
 In scope:
 

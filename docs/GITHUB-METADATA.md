@@ -59,14 +59,14 @@ Spec:
 For v0.1, generate a static PNG using VHS or hand-compose one. Suggested layout:
 - Top half: text wedge "The hooks that make Claude stop lying about done."
 - Bottom half: still frame from `docs/demos/discipline.gif` showing the BLOCK message
-- Bottom-right corner: "github.com/Wishmakingfairy/god-mode-os" in monospace
+- Bottom-right corner: "github.com/Wishmakingfairy/god-mode-os-for-claude-code" in monospace
 
 If skipping for v0.1, GitHub falls back to the README hero GIF auto-cropped, which is acceptable but suboptimal.
 
 ## CLI commands to apply (after `gh repo create` or after pushing)
 
 ```bash
-gh repo edit Wishmakingfairy/god-mode-os \
+gh repo edit Wishmakingfairy/god-mode-os-for-claude-code \
     --description "Discipline hooks for Claude Code. Stop the agent from claiming 'done' without proof, block accidental writes to ~/.claude config, and route prompts to skills via local pgvector with zero Anthropic tokens." \
     --add-topic claude-code \
     --add-topic claude-code-hooks \
