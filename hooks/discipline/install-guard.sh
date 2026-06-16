@@ -101,6 +101,12 @@ case "$TOOL_NAME" in
             block "Claude Code install command: $CMD"
         fi
 
+        # Block the dangerouslyOverrideSandbox flag (see Claude Code issue #10089).
+        # It disables all sandbox protections and should require an explicit override.
+        if echo "$CMD" | grep -q "dangerouslyOverrideSandbox"; then
+            block "dangerouslyOverrideSandbox detected: $CMD . This bypasses all sandbox protections."
+        fi
+
         if echo "$CMD" | grep -qE 'git[[:space:]]+clone.*\.claude/(skills|plugins|hooks|commands)'; then
             block "git clone into protected path: $CMD"
         fi

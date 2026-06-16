@@ -4,9 +4,11 @@
 #
 # Built-in checks (toggle each via env var, all on by default):
 #   GMOS_CHECK_EM_DASH=1         em-dash hard ban (style)
+#   GMOS_CHECK_SLOP=1            AI-slop filler words (style)
+#   GMOS_CHECK_SYCOPHANCY=1      sycophantic openers (style)
 #   GMOS_CHECK_TOOL_USE=1        no claims about files without reading them first
 #   GMOS_CHECK_CITATIONS=1       statistics and version claims need a source
-#   GMOS_CHECK_CONSISTENCY=1     contradiction with prior turn (Ollama)
+#   GMOS_CHECK_CONSISTENCY=1     contradiction with prior turn (Ollama, majority vote)
 #   GMOS_CHECK_DODGE=1           capability denial / dodge (Ollama)
 #
 # Honors kill switch and admin override.
@@ -74,6 +76,25 @@ if [ "${GMOS_CHECK_EM_DASH:-1}" = "1" ]; then
     fi
 fi
 
+# === Check: AI-slop filler words ===
+if [ "${GMOS_CHECK_SLOP:-1}" = "1" ]; then
+    SLOP_RE='\b(delve|leverage|utilize|seamlessly|unlock|game-changer|game changer|elevate|cutting-edge|cutting edge|groundbreaking|revolutionary|transformative|synergy|robust|scalable|holistic|paradigm)\b'
+    if echo "$LAST_MSG" | grep -qiE "$SLOP_RE"; then
+        WORD=$(echo "$LAST_MSG" | grep -oiE "$SLOP_RE" | head -1)
+        log_block "AI-slop word: $WORD"
+        emit_block "AI-slop word detected: \"$WORD\". Rewrite without filler/marketing words."
+    fi
+fi
+
+# === Check: sycophantic openers ===
+if [ "${GMOS_CHECK_SYCOPHANCY:-1}" = "1" ]; then
+    FIRST_LINE=$(echo "$LAST_MSG" | sed '/^[[:space:]]*$/d' | head -1)
+    if echo "$FIRST_LINE" | grep -qiE '^(great( question)?!?|certainly!?|of course!?|absolutely!?|sure!?|happy to (help|assist)|glad to|excellent!?|perfect!?|wonderful!?|fantastic!?|awesome!?)[[:space:]]*$'; then
+        log_block "sycophantic opener: $FIRST_LINE"
+        emit_block "Sycophantic opener detected: \"$FIRST_LINE\". Do not open with affirmations. Lead with content."
+    fi
+fi
+
 # === Check: tool use before factual claims about files ===
 if [ "${GMOS_CHECK_TOOL_USE:-1}" = "1" ]; then
     RESPONSE_PATHS=$(echo "$LAST_MSG" | grep -oE '(~|/)[A-Za-z0-9._/-]+\.(sh|md|json|js|ts|py|tsx|jsx|html|css|yaml|yml|toml|txt|conf)' | sort -u | head -5)
@@ -118,9 +139,14 @@ NEW:
 $(echo "$LAST_MSG" | head -c 2000)
 
 Your answer (single digit only):"
-        CONS_OUT=$(echo "$CONSISTENCY_PROMPT" | timeout 10 "$OLLAMA_BIN" run "$OLLAMA_MODEL" 2>/dev/null | tr -d '[:space:]' | head -c 1)
-        if [ "$CONS_OUT" = "1" ]; then
-            log_block "contextual-consistency: contradicts earlier turn"
+        # Majority vote across 3 samples to cut false positives from a single noisy call.
+        votes=0
+        for _ in 1 2 3; do
+            CONS_OUT=$(echo "$CONSISTENCY_PROMPT" | timeout 10 "$OLLAMA_BIN" run "$OLLAMA_MODEL" 2>/dev/null | tr -d '[:space:]' | head -c 1)
+            [ "$CONS_OUT" = "1" ] && votes=$((votes + 1))
+        done
+        if [ "$votes" -ge 2 ]; then
+            log_block "contextual-consistency: contradicts earlier turn ($votes/3)"
             emit_block "Detected contradiction with earlier statement. Either correct the contradiction or explicitly acknowledge you changed position."
         fi
     fi

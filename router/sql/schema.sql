@@ -32,6 +32,27 @@ CREATE TABLE IF NOT EXISTS skills (
 
 CREATE INDEX IF NOT EXISTS skills_desc_fts_idx ON skills USING gin (to_tsvector('english', description));
 
+-- Memories: short-lived working memory (clean up on a TTL via the indexer).
+CREATE TABLE IF NOT EXISTS memories (
+  id            BIGSERIAL PRIMARY KEY,
+  source        TEXT NOT NULL,
+  content       TEXT NOT NULL,
+  content_hash  TEXT NOT NULL UNIQUE,
+  embedding     vector(768) NOT NULL,
+  pinned        BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Corrections: long-lived. Distilled feedback (e.g. from the stop-validator log).
+CREATE TABLE IF NOT EXISTS corrections (
+  id            BIGSERIAL PRIMARY KEY,
+  rule          TEXT NOT NULL,
+  context       TEXT NOT NULL,
+  content_hash  TEXT NOT NULL UNIQUE,
+  embedding     vector(768) NOT NULL,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 -- NO IVFFlat indexes by default.
 -- Stress test (679 prompts) showed IVFFlat with lists=50 + default probes=1
 -- returns near-random results (28% top-1 vs 81% on sequential scan).

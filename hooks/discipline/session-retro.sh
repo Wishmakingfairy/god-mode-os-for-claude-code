@@ -50,7 +50,7 @@ BASH_LOG=$(jq -r 'select(.message.content? != null) | .message.content[] | selec
 
 RETRO_BODY=""
 if command -v gemini >/dev/null 2>&1; then
-    RETRO_BODY=$(jq -rs '[.[] | select((.message.role? == "assistant" or .role? == "assistant"))] | map((.message.content? // .content? // []) | if type == "array" then (map(select(.type? == "text") | .text) | join(" ")) else tostring end) | join("\n---\n")' "$TRANSCRIPT_PATH" 2>/dev/null | tail -c 40000 | gemini -p "Generate a session retro from these assistant turns. Sections: What we tried, What worked, What broke, Follow-ups, One thing to remember next session. Max 300 words. No em dashes." 2>/dev/null)
+    RETRO_BODY=$(jq -rs '[.[] | select((.message.role? == "assistant" or .role? == "assistant"))] | map((.message.content? // .content? // []) | if type == "array" then (map(select(.type? == "text") | .text) | join(" ")) else tostring end) | join("\n---\n")' "$TRANSCRIPT_PATH" 2>/dev/null | tail -c 40000 | perl -e 'alarm 20; exec @ARGV' gemini -p "Generate a session retro from these assistant turns. Sections: What we tried, What worked, What broke, Follow-ups, One thing to remember next session. Max 300 words. No em dashes." 2>/dev/null)
 fi
 
 cat > "$OUT" <<EOF
