@@ -4,7 +4,7 @@
 #   ./install.sh                  # installs Discipline tier (default, 60s)
 #   ./install.sh discipline       # same as above
 #   ./install.sh routing          # adds Routing tier (requires Docker + Ollama)
-#   ./install.sh intelligence     # adds Intelligence tier (requires Gemini CLI optional)
+#   ./install.sh all              # discipline + routing
 #   ./install.sh all              # installs everything
 #
 # Idempotent: re-running adds missing pieces, never duplicates settings.json entries.
@@ -155,45 +155,17 @@ install_routing() {
     echo "Test: python3 $GMOS_REPO/router/vector/query.py 'how do I optimize a postgres query' --merged"
 }
 
-install_intelligence() {
-    echo "==> Installing Intelligence tier"
-
-    backup_settings
-    if link_hook "$GMOS_REPO/hooks/intelligence/intelligence-trigger.sh"; then
-        register_hook "SessionStart" "$CC_HOOKS_DIR/intelligence-trigger.sh"
-    fi
-
-    [ -f "$GMOS_HOME/feeds.txt" ] || cp "$GMOS_REPO/install/feeds.txt.example" "$GMOS_HOME/feeds.txt"
-    [ -f "$GMOS_HOME/health-check-urls.txt" ] || cp "$GMOS_REPO/install/health-check-urls.txt.example" "$GMOS_HOME/health-check-urls.txt"
-
-    echo ""
-    echo "Intelligence tier installed."
-    echo "Digest now fires off Claude Code's SessionStart event (no launchd cron)."
-    echo "First digest will land at \$GMOS_HOME/intelligence/$(date +%Y-%m-%d).md when you next start a session."
-    echo "Or run it now:  bash $GMOS_REPO/hooks/intelligence/intelligence-monitor.sh"
-    echo "Edit feeds:   $GMOS_HOME/feeds.txt"
-    echo "Edit health:  $GMOS_HOME/health-check-urls.txt"
-    if ! command -v gemini >/dev/null 2>&1; then
-        echo ""
-        echo "    Optional: install Gemini CLI for summarized digests."
-        echo "    npm install -g @google/gemini-cli && gemini auth"
-    fi
-}
-
 case "$TIER" in
     discipline) install_discipline ;;
     routing) install_routing ;;
-    intelligence) install_intelligence ;;
     all)
         install_discipline
         echo ""
         install_routing
-        echo ""
-        install_intelligence
         ;;
     *)
         echo "Unknown tier: $TIER"
-        echo "Usage: $0 [discipline|routing|intelligence|all]"
+        echo "Usage: $0 [discipline|routing|all]"
         exit 1
         ;;
 esac

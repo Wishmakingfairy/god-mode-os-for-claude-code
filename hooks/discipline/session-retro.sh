@@ -49,8 +49,10 @@ EDITS=$(jq -r 'select(.message.content? != null) | .message.content[] | select(.
 BASH_LOG=$(jq -r 'select(.message.content? != null) | .message.content[] | select(.type? == "tool_use" and .name == "Bash") | .input.description // .input.command // empty' "$TRANSCRIPT_PATH" 2>/dev/null | head -20)
 
 RETRO_BODY=""
-if command -v gemini >/dev/null 2>&1; then
-    RETRO_BODY=$(jq -rs '[.[] | select((.message.role? == "assistant" or .role? == "assistant"))] | map((.message.content? // .content? // []) | if type == "array" then (map(select(.type? == "text") | .text) | join(" ")) else tostring end) | join("\n---\n")' "$TRANSCRIPT_PATH" 2>/dev/null | tail -c 40000 | gemini -p "Generate a session retro from these assistant turns. Sections: What we tried, What worked, What broke, Follow-ups, One thing to remember next session. Max 300 words. No em dashes." 2>/dev/null)
+# Off by default: the Gemini summary sends transcript text to Google. Opt in with
+# GMOS_RETRO_GEMINI=1. Default ships local-only (no external network calls).
+if [ "${GMOS_RETRO_GEMINI:-0}" = "1" ] && command -v gemini >/dev/null 2>&1; then
+    RETRO_BODY=$(jq -rs '[.[] | select((.message.role? == "assistant" or .role? == "assistant"))] | map((.message.content? // .content? // []) | if type == "array" then (map(select(.type? == "text") | .text) | join(" ")) else tostring end) | join("\n---\n")' "$TRANSCRIPT_PATH" 2>/dev/null | tail -c 40000 | perl -e 'alarm 20; exec @ARGV' gemini -p "Generate a session retro from these assistant turns. Sections: What we tried, What worked, What broke, Follow-ups, One thing to remember next session. Max 300 words. No em dashes." 2>/dev/null)
 fi
 
 cat > "$OUT" <<EOF
