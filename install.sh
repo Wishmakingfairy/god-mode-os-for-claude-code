@@ -4,8 +4,7 @@
 #   ./install.sh                  # installs Discipline tier (default, 60s)
 #   ./install.sh discipline       # same as above
 #   ./install.sh routing          # adds Routing tier (requires Docker + Ollama)
-#   ./install.sh all              # discipline + routing
-#   ./install.sh all              # installs everything
+#   ./install.sh all              # discipline + routing (everything)
 #
 # Idempotent: re-running adds missing pieces, never duplicates settings.json entries.
 # Backs up ~/.claude/settings.json to settings.json.gmos-backup before any change.
@@ -117,6 +116,10 @@ install_discipline() {
         register_hook "Stop" "$CC_HOOKS_DIR/session-retro.sh"
     fi
     link_hook "$GMOS_REPO/hooks/discipline/discipline-toggle.sh" || true
+
+    if link_hook "$GMOS_REPO/hooks/capability-manifest.sh"; then
+        register_hook "SessionStart" "$CC_HOOKS_DIR/capability-manifest.sh"
+    fi
 
     # Seed example configs if user hasn't created theirs
     [ -f "$GMOS_HOME/protected-paths.txt" ] || cp "$GMOS_REPO/install/protected-paths.txt.example" "$GMOS_HOME/protected-paths.txt"

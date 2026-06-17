@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/banner.png" alt="god-mode-os: Claude Code, with discipline hooks" width="100%">
+</p>
+
 # Claude Code, with discipline hooks
 
 by [@Wishmakingfairy](https://github.com/Wishmakingfairy)
@@ -12,8 +16,13 @@ god-mode-os is a layer of bash hooks for Claude Code that:
 
 - **Block false "done" claims.** Claude can't say it ran the tests if it never ran the tests.
 - **Protect `~/.claude/`.** Writes to your hooks, skills, and `settings.json` need explicit approval.
+- **Catch committed secrets before you ship.** A local, fail-closed gitleaks gate.
 - **Route prompts to skills locally.** pgvector + Ollama, sub-300 ms, zero Anthropic tokens.
-- **Replace your morning RSS scan.** One file at 7am, pre-tagged `must read` / `skip`.
+- **Run offline.** No telemetry, no phone-home. Your code and prompts never leave the machine.
+
+<p align="center">
+  <img src="docs/features.png" alt="Four features: blocks false done, secret-scan gate, local skill routing, runs offline" width="100%">
+</p>
 
 ```bash
 git clone https://github.com/Wishmakingfairy/god-mode-os-for-claude-code
@@ -21,7 +30,18 @@ cd god-mode-os-for-claude-code
 ./install.sh                # ~60 seconds, only jq + python3 needed
 ```
 
-> **Don't trust the README?** Run `bash smoke.sh` — it tests every load-bearing claim against the real code on your machine and prints a pass/fail receipt.
+> **Don't trust the README?** Run `bash smoke.sh`. It tests every load-bearing claim in this README against the real code and prints a pass/fail receipt. It runs in a throwaway `HOME` and installs nothing, so you can prove the claims before you touch your own `~/.claude`. The same script runs in CI on every push, on Linux and macOS, so the badge above is a live receipt too.
+
+## Contents
+
+- [Runs offline](#runs-offline)
+- [How it hooks in](#how-it-hooks-in)
+- [What it does](#what-it-does)
+- [Before / after](#before--after)
+- [Install](#install)
+- [What ships in the default install](#what-ships-in-the-default-install)
+- [Customize](#customize)
+- [FAQ](#faq)
 
 ## Why this exists
 
@@ -34,6 +54,22 @@ Four walls every senior Claude Code user has hit:
 
 god-mode-os is the discipline layer Anthropic deliberately leaves to vendors. It enforces what your `CLAUDE.md` only describes.
 
+<p align="center">
+  <img src="docs/before-after.png" alt="Claude Code alone: claims done without testing, leaks secrets, wastes tokens, rewrites config. With god-mode-os: done only after a real test, secrets caught, 0-token local routing, config edits need approval" width="100%">
+</p>
+
+## Runs offline
+
+By default god-mode-os makes no external network calls. No telemetry, no analytics, no phone-home. Your prompts, transcripts, and code stay on your machine. The local skill router talks only to localhost (Postgres and Ollama). Two optional exceptions exist, both off by default and documented: the osv-scanner CVE lookup in the pre-deploy gate, and a Gemini session summary you turn on with `GMOS_RETRO_GEMINI=1`. Full detail in [PRIVACY.md](PRIVACY.md). Verify it yourself: `grep -rniE 'curl|wget|https?://' --include='*.sh' --include='*.py' .` and you will find only localhost and the documented osv.dev lookup.
+
+## How it hooks in
+
+god-mode-os attaches a small bash hook to each point in the Claude Code session lifecycle. Nothing runs in the background and nothing leaves your machine.
+
+<p align="center">
+  <img src="docs/lifecycle.png" alt="god-mode-os hooks into the Claude Code session lifecycle: capability-manifest on SessionStart, context-router on UserPromptSubmit, install-guard and folder-law on PreToolUse, stop-validator and session-retro on Stop" width="100%">
+</p>
+
 ## What it does
 
 The table below summarises the four scenarios in the [before / after](#before--after) section. Each row links to a runnable fixture in [`docs/demos/fixtures/`](docs/demos/fixtures/) so you can reproduce locally.
@@ -43,28 +79,13 @@ The table below summarises the four scenarios in the [before / after](#before--a
 | [stop-validator](#stop-validator-stops-claude-lying-about-done) | "All tests pass. Done." with no tool use to back it | block fires; agent rewrites with `Read` + actual test run |
 | [install-guard](#install-guard-stops-silent-rewrites-of-your-claude-code-config) | `Write` to `~/.claude/settings.json` proceeds; existing entries can be dropped | blocked until `GMOS_ADMIN_OVERRIDE=1` |
 | [routing](#routing-skill-selection-at-zero-anthropic-tokens-tier-2) | Claude reads the full skill manifest each prompt to pick (~721 descriptions in the author's config) | local pgvector cosine match: **0 Anthropic tokens** by design, **sub-300 ms typical** on the author's setup |
-| [intelligence](#intelligence-daily-digest-replaces-tab-juggling-tier-3) | open multiple RSS / news tabs every morning, scan the unsorted firehose | one file at 7am, `must read` / `skip` pre-tagged |
+| secret-scan gate | a committed API key reaches the remote before anyone notices | `bin/pre-deploy-gate.sh` blocks the deploy on any gitleaks hit, fully local |
 
-**Routing per prompt, visualised (lower is better):**
+**Routing per prompt, lower is better.** The saving scales with how many skills you run. The figures below are estimates for a setup with hundreds of skills; with only a few, the difference is small.
 
-```text
-Input tokens spent on routing
-  default       █████████████████████████████████████████  ~3,200 *
-  god-mode-os   ▏                                              0
-
-Routing latency
-  default       ███████████████████████                    ~2.4 s *
-  god-mode-os   ██                                          0.26 s
-
-Anthropic spend per prompt
-  default       ███████████████████████                    ~$0.0096 *
-  god-mode-os   ▏                                          $0.0000
-
-* Default Claude Code numbers are estimates based on Claude reading a
-  721-skill manifest at typical prompt length, not a measurement.
-  god-mode-os numbers are real local measurements on the author's
-  machine. Reproduce yourself: docs/demos/fixtures/before-after-routing-*.sh.
-```
+<p align="center">
+  <img src="docs/compare.png" alt="Routing cost per prompt: default sends ~3,200 tokens, ~2.4s, ~$0.0096; god-mode-os sends 0 tokens, 0.26s, $0.00" width="100%">
+</p>
 
 ## Before / after
 
@@ -72,7 +93,7 @@ Each pair below is a screen recording of a fixture script in [`docs/demos/fixtur
 
 ### stop-validator: stops Claude lying about "done"
 
-> Prompt: "Fix the JWT bug in `~/src/auth.ts` and run the tests." A known Claude Code failure mode: the agent says "all tests pass, done" without actually running them, and you ship the regression. The stop-validator hook blocks any final response that claims about a file path without a recent `Read` / `Grep` / `Bash` of that path — Claude is forced to rewrite the response with proof.
+> Prompt: "Fix the JWT bug in `~/src/auth.ts` and run the tests." A known Claude Code failure mode: the agent says "all tests pass, done" without actually running them, and you ship the regression. The stop-validator hook blocks any final response that claims about a file path without a recent `Read` / `Grep` / `Bash` of that path. Claude is forced to rewrite the response with proof.
 
 <table width="100%">
 <tr>
@@ -83,7 +104,7 @@ Each pair below is a screen recording of a fixture script in [`docs/demos/fixtur
 
 ### install-guard: stops silent rewrites of your Claude Code config
 
-> Prompt: "Add a new PostToolUse hook to my Claude Code config." Without a guard, an agent with `Write` access on `~/.claude/settings.json` can re-serialise the file with new entries — and risk dropping or malforming the existing ones. With the install-guard hook, any `Write` / `Edit` / `Bash` against `~/.claude/settings.json`, `~/.claude/hooks/`, or `~/.claude/skills/` is blocked until the user re-runs with `GMOS_ADMIN_OVERRIDE=1`.
+> Prompt: "Add a new PostToolUse hook to my Claude Code config." Without a guard, an agent with `Write` access on `~/.claude/settings.json` can re-serialise the file with new entries, and risk dropping or malforming the existing ones. With the install-guard hook, any `Write` / `Edit` / `Bash` against `~/.claude/settings.json`, `~/.claude/hooks/`, or `~/.claude/skills/` is blocked until the user re-runs with `GMOS_ADMIN_OVERRIDE=1`.
 
 <table width="100%">
 <tr>
@@ -94,7 +115,11 @@ Each pair below is a screen recording of a fixture script in [`docs/demos/fixtur
 
 ### routing: skill selection at zero Anthropic tokens (Tier 2)
 
-> Prompt: "design system tokens for a dark dashboard." Without the hook, Claude reads the skill manifest each prompt to pick — at 721 skills, this is around 3,200 input tokens / ~2.4 s / ~$0.0096 per query (estimate, varies with manifest size and prompt length). With the hook, the router uses a local pgvector cosine match. The architecture sends **0 Anthropic tokens** for routing (no API call is made). The latency on the author's setup is **sub-300 ms** typical; the live measurement loop is in [`docs/demos/fixtures/router-demo.sh`](docs/demos/fixtures/router-demo.sh).
+> Prompt: "design system tokens for a dark dashboard." Without the hook, Claude reads the skill manifest each prompt to pick. At 721 skills, this is around 3,200 input tokens / ~2.4 s / ~$0.0096 per query (estimate, varies with manifest size and prompt length). With the hook, the router uses a local pgvector cosine match. The architecture sends **0 Anthropic tokens** for routing (no API call is made). The latency on the author's setup is **sub-300 ms** typical; the live measurement loop is in [`docs/demos/fixtures/router-demo.sh`](docs/demos/fixtures/router-demo.sh).
+
+<p align="center">
+  <img src="docs/flow-local.png" alt="Your prompt goes to a local router (pgvector + Ollama) that picks the right skill on your machine. The Anthropic API is not called to route, so 0 tokens are spent and your data stays local" width="100%">
+</p>
 
 <table width="100%">
 <tr>
@@ -103,38 +128,61 @@ Each pair below is a screen recording of a fixture script in [`docs/demos/fixtur
 </tr>
 </table>
 
-### intelligence: daily digest replaces tab-juggling (Tier 3)
+### secret-scan gate: catch committed secrets before deploy
 
-> The illustrative "before" reflects how Claude Code power users typically scan the firehose: HN best, Anthropic blog, Simon Willison, GitHub trending, Claude Code releases. Most of what you scan is noise. The "after" is the actual digest format god-mode-os writes at 7am: one markdown file, items pre-sorted into "must read" and "skip", a 90-second read.
+> Prompt: "ship the new env config." A common failure: a real API key gets committed and pushed before anyone reads the diff. Run `bin/pre-deploy-gate.sh` first. It runs gitleaks locally over the working tree and exits non-zero on any hit, so the deploy stops before the secret leaves your machine. gitleaks is fully local. The optional second step (osv-scanner CVE lookup) is the only part that touches the network, and only if you install it.
 
-<table width="100%">
-<tr>
-<td width="50%"><img src="docs/demos/before-after/intelligence-before.png" alt="Without god-mode-os: 5 tabs open, scan 120 items, 25 minutes reading, only 5 minutes worth of signal kept." /></td>
-<td width="50%"><img src="docs/demos/before-after/intelligence-after.png" alt="With god-mode-os: one digest file at 7am, must-read and skip pre-tagged, 90 seconds to read, INBOX.md keeps the index." /></td>
-</tr>
-</table>
+```bash
+bin/pre-deploy-gate.sh .        # exit 0 = clean, exit 1 = secret or CVE found
+```
+
+Real output on a clean tree:
+
+```text
+============================================
+ PRE-DEPLOY SECURITY GATE  ::  .
+============================================
+
+--- [1/2] Secret scan (gitleaks, local) ---
+  OK: no secrets found
+
+--- [2/2] Dependency CVEs (osv-scanner, optional, online) ---
+  OK: no known-vulnerable dependencies
+
+============================================
+ GATE PASSED
+============================================
+```
+
+When gitleaks finds a key, that step prints `FAIL: secrets detected, do not deploy` and the gate exits `1`, so a CI step or a pre-push wrapper stops the deploy before the secret leaves your machine.
 
 ## Install
 
 The install command is above. To recap the steps:
 
-1. `./install.sh` symlinks five hooks into `~/.claude/hooks/` and registers four entries in `~/.claude/settings.json`.
+1. `./install.sh` symlinks six hooks into `~/.claude/hooks/` and registers five entries in `~/.claude/settings.json`.
 2. The first install backs up your existing `settings.json` to `settings.json.gmos-backup`.
 3. Restart Claude Code to activate.
 4. To remove cleanly: `./uninstall.sh` (data kept) or `./uninstall.sh --purge` (data wiped). Or `bash hooks/discipline/discipline-toggle.sh off` for the kill switch without uninstalling.
 
-Want the local skill router or daily intelligence digest? See [TIERS.md](docs/TIERS.md).
+Want the local skill router? See [TIERS.md](docs/TIERS.md).
 
-### Verify before you trust
+### Try it before you trust it, no install
 
-`smoke.sh` runs every load-bearing claim in this README against the real code on your machine and prints a plain-English pass/fail receipt.
+`smoke.sh` runs every load-bearing claim in this README against the real code, in a throwaway `HOME`. It installs nothing and never touches your real `~/.claude` or `~/.god-mode-os`, so you can prove the claims first and decide after.
 
 ```bash
-bash smoke.sh           # plain summary
-bash smoke.sh -v        # verbose: include 'how' for each claim
+git clone https://github.com/Wishmakingfairy/god-mode-os-for-claude-code
+cd god-mode-os-for-claude-code
+bash smoke.sh            # plain pass/fail receipt
+bash smoke.sh -v         # verbose: shows how each check was performed
 ```
 
-Hard-fails (exit 1) on any behavioural claim that's false; soft-warns on timing claims. Fully isolated: writes to a temporary `HOME` and cleans up after itself, so it never touches your real `~/.god-mode-os`. CI runs the same script on every push, on both Linux and macOS.
+<p align="center">
+  <img src="docs/proof.png" alt="smoke.sh receipt: 21 claims verified, 0 warnings, 0 failed; every load-bearing README claim true on this machine" width="92%">
+</p>
+
+It hard-fails (exit 1) on any false behavioural claim and soft-warns on timing. The same script runs in CI on every push, on Linux and macOS, so the badge at the top is a live receipt too.
 
 ## What ships in the default install
 
@@ -143,16 +191,19 @@ The discipline tier hooks Claude Code's `Stop` and `PreToolUse` events.
 - **stop-validator** blocks the response when Claude claims about a file path without a recent `Read`/`Grep`/`Bash` of it, contains an em-dash, makes statistical claims without a source, or contradicts an earlier turn. Claude is forced to rewrite with proof.
 - **install-guard** blocks `Write`/`Edit`/`Bash` calls that target `~/.claude/settings.json`, `~/.claude/hooks/`, `~/.claude/skills/`, and other protected paths. Override per command with `GMOS_ADMIN_OVERRIDE=1`.
 - **folder-law-reminder** blocks writes to `/tmp` and `~/Downloads` by default. Customize via `~/.god-mode-os/forbidden-write-paths.txt`.
-- **session-retro** auto-writes `docs/retros/YYYY-MM-DD-topic.md` when a session uses 5 or more tools. Uses Gemini for synthesis if installed, raw stats otherwise.
+- **session-retro** auto-writes `docs/retros/YYYY-MM-DD-topic.md` when a session uses 5 or more tools. It writes from local session stats. An optional Gemini summary is off by default; set `GMOS_RETRO_GEMINI=1` to turn it on (that step sends the transcript to the Gemini CLI).
+- **capability-manifest** runs at `SessionStart` and injects a live, local list of your installed skills, MCP servers, and plugins, so Claude does not falsely claim it lacks a tool it actually has. No network calls.
 - **discipline-toggle** is the kill switch: `bash hooks/discipline/discipline-toggle.sh off`.
 
-Five toggle env vars, all default on:
+Seven toggle env vars, all default on:
 
 ```text
 GMOS_CHECK_EM_DASH       em-dash hard ban
+GMOS_CHECK_SLOP          ban AI-slop filler words
+GMOS_CHECK_SYCOPHANCY    ban sycophantic openers
 GMOS_CHECK_TOOL_USE      no claims about files without reading
 GMOS_CHECK_CITATIONS     statistics need a source
-GMOS_CHECK_CONSISTENCY   detect contradiction with prior turn (requires Ollama)
+GMOS_CHECK_CONSISTENCY   detect contradiction with prior turn (requires Ollama, majority vote)
 GMOS_CHECK_DODGE         detect capability denial (requires Ollama)
 ```
 
@@ -167,8 +218,6 @@ Everything is configurable via either an env var or a plain text file in `~/.god
 | Which discipline checks fire | `GMOS_CHECK_*` env vars | all 5 on |
 | Paths install-guard protects | `~/.god-mode-os/protected-paths.txt` | `~/.claude/{settings.json, hooks/, skills/, plugins/, commands/}` |
 | Paths folder-law-reminder blocks | `~/.god-mode-os/forbidden-write-paths.txt` | `/tmp` and `~/Downloads` |
-| RSS feeds for the daily digest (Tier 3) | `~/.god-mode-os/feeds.txt` | five Claude-relevant feeds |
-| Health-check URLs (Tier 3) | `~/.god-mode-os/health-check-urls.txt` | empty by default |
 | Postgres DSN, Ollama URL, embed model (Tier 2) | `GMOS_DB_DSN`, `GMOS_OLLAMA_URL`, `GMOS_EMBED_MODEL` env vars | localhost defaults |
 | Kill switch (disable everything, no uninstall) | `~/.claude/.god-mode-disabled` (touch to enable) | absent |
 | Per-command escape hatch | `GMOS_ADMIN_OVERRIDE=1` | unset |
@@ -204,6 +253,17 @@ The agent cannot bypass hooks. Hooks run in your shell process, outside Claude's
 ### How do I uninstall?
 
 Run `./uninstall.sh` to remove hooks and settings.json entries (data kept). Run `./uninstall.sh --purge` to also wipe `~/.god-mode-os/`. The kill switch `bash hooks/discipline/discipline-toggle.sh off` disables all hooks without uninstalling.
+
+## Known limits
+
+What it does not do, stated plainly:
+
+- It constrains behavior. It does not make Claude smarter. These are bash hooks, not a model upgrade.
+- stop-validator catches a pattern: claims about a file with no recent read or test, em dashes, unsourced stats, contradictions, slop words. It will not catch every false "done", and the two Ollama-based checks can throw false positives. Every check is an env-var toggle you can turn off.
+- The routing token saving scales with how many skills you run. With a handful of skills it is small.
+- The secret gate catches what gitleaks recognizes, not literally every secret. The optional osv-scanner step is the only part that touches the network.
+- macOS first. The discipline tier is portable bash; the routing tier needs Docker and Ollama.
+- It is not a security boundary against a malicious local user. If someone has your shell, they have your config.
 
 ## Compatibility
 

@@ -8,16 +8,16 @@ god-mode-os is designed to defend against accidental damage by AI agents (false 
 
 ## What god-mode-os does and does not do
 
-- **Does**: read your `~/.claude/` config files, write logs to `~/.god-mode-os/`, register hooks in `~/.claude/settings.json`, optionally run a local Postgres+pgvector container (Tier 2), optionally schedule launchd jobs (Tier 3).
+- **Does**: read your `~/.claude/` config files, write logs to `~/.god-mode-os/`, register hooks in `~/.claude/settings.json`, optionally run a local Postgres+pgvector container (Tier 2).
 - **Does not**: phone home, send telemetry, read project source code outside the indexed scope, modify files outside `~/.god-mode-os/` and `~/.claude/hooks/` (symlinks only).
-- **Outbound network calls**: only Claude Code itself talks to Anthropic. The router talks only to localhost Ollama and Postgres. The Tier 3 intelligence-monitor fetches RSS feeds (publicly addressable URLs you configure) and optionally calls Gemini CLI.
+- **Outbound network calls**: none by default beyond Claude Code itself talking to Anthropic. The router talks only to localhost Ollama and Postgres. The only opt-in exceptions are the pre-deploy gate's optional `osv-scanner` CVE lookup (osv.dev) and the `session-retro` Gemini summary, which is off unless you set `GMOS_RETRO_GEMINI=1`. Full detail in `PRIVACY.md`.
 
 ## What the install script touches
 
 - `~/.claude/hooks/`: creates symlinks to scripts in this repo. Existing files are not modified.
 - `~/.claude/settings.json`: adds entries via `jq`. First run creates a backup at `settings.json.gmos-backup`.
 - `~/.god-mode-os/`: created on demand. All state, logs, retros, digests live here.
-- Tier 3 (Intelligence) fires off Claude Code's `SessionStart` event via a hook — no launchd, no cron job.
+- `capability-manifest` runs on Claude Code's `SessionStart` event and only reads local files.
 
 ## Reporting vulnerabilities
 
@@ -44,7 +44,7 @@ The Tier 2 routing container ships with `user=gmos` / `password=gmos` and binds 
 Strongly recommended for any tool that touches `~/.claude/`. Specifically read:
 
 - `install.sh` and `uninstall.sh`
-- Each hook in `hooks/discipline/`, `hooks/routing/`, `hooks/intelligence/`
-- The `.plist.example` files if you install Tier 3
+- Each hook in `hooks/discipline/`, `hooks/routing/`, and `hooks/capability-manifest.sh`
+- `bin/pre-deploy-gate.sh`
 
 The repo is small. A 30-minute audit is enough to verify the hooks do what the README says.

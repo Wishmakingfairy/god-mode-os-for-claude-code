@@ -42,3 +42,12 @@ docs/reference/
 
 # Auto-generated per-session personal state (never commit)
 context-ledger.yaml
+
+# Session retros are personal; never commit them to a public repo
+docs/retros/
+
+# Visual build sources (the shipped artifacts are the PNGs)
+docs/*.html
+
+# Temp visual previews (not shipped)
+docs/_*.png

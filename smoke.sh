@@ -96,19 +96,19 @@ DEPS=$(grep -E "^command -v (jq|python3)" "$REPO/install.sh" | wc -l | tr -d ' '
 
 # ════════════════════════════════════════════════════════════════════
 echo ""
-echo "[hard] CLAIM 2: 'Default install creates 5 hooks + 4 settings.json entries'"
+echo "[hard] CLAIM 2: 'Default install creates 6 hooks + 5 settings.json entries'"
 gmos_run "$REPO/install.sh" discipline >/dev/null 2>&1
 HOOKS=$(find "$TEST_HOME/.claude/hooks" -type l 2>/dev/null | wc -l | tr -d ' ')
-[ "$HOOKS" = "5" ] \
-    && ok "5 hook symlinks created" \
+[ "$HOOKS" = "6" ] \
+    && ok "6 hook symlinks created" \
           "counted symlinks in test HOME's .claude/hooks/" \
-    || no "expected 5 hooks, found $HOOKS"
+    || no "expected 6 hooks, found $HOOKS"
 
 ENTRIES=$(jq '[.hooks[][].hooks[]] | length' "$TEST_HOME/.claude/settings.json" 2>/dev/null)
-[ "$ENTRIES" = "4" ] \
-    && ok "4 hook entries in settings.json (2 PreToolUse + 2 Stop)" \
+[ "$ENTRIES" = "5" ] \
+    && ok "5 hook entries in settings.json (2 PreToolUse + 2 Stop + 1 SessionStart)" \
           "ran ./install.sh, counted entries via jq" \
-    || no "expected 4 entries, found $ENTRIES"
+    || no "expected 5 entries, found $ENTRIES"
 
 # ════════════════════════════════════════════════════════════════════
 echo ""
