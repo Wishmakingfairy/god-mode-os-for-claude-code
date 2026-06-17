@@ -1,5 +1,24 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Public edition is now zero-egress by default. No external network calls unless you opt in. See `PRIVACY.md`.
+- `session-retro` Gemini summary is off by default. Set `GMOS_RETRO_GEMINI=1` to enable it.
+
+### Added
+
+- Local secret-scan pre-deploy gate: `bin/pre-deploy-gate.sh` (gitleaks, fully local; optional osv-scanner CVE lookup).
+- `capability-manifest` SessionStart hook: live, local inventory of installed skills, MCP servers, and plugins.
+- `PRIVACY.md` documenting the network policy and the two opt-in exceptions.
+- stop-validator: AI-slop and sycophantic-opener checks, plus a 3-sample majority vote on the contradiction check to cut false positives.
+- install-guard: blocks the sandbox-override flag (Claude Code issue #10089).
+
+### Removed
+
+- Tier 3 Intelligence (RSS + Gemini daily digest) is no longer part of the public edition.
+
 ## v0.1.0 (2026-04-27)
 
 Initial public release.

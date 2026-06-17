@@ -32,7 +32,7 @@ MODE="${1:---keep-data}"
 
 echo "==> Removing god-mode-os symlinks from $CC_HOOKS_DIR"
 REMOVED_CMDS=()
-for f in install-guard folder-law-reminder stop-validator session-retro discipline-toggle context-router intelligence-trigger; do
+for f in install-guard folder-law-reminder stop-validator session-retro discipline-toggle context-router capability-manifest; do
     link="$CC_HOOKS_DIR/$f.sh"
     if [ -L "$link" ] && [[ "$(readlink "$link")" == "$GMOS_REPO"* ]]; then
         # Match the shell-quoted form install.sh registered (handles paths with spaces).
