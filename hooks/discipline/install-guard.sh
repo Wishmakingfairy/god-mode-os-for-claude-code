@@ -831,10 +831,10 @@ def analyze(cmd, cwd, depth=0):
                 k += 1
             if not explicit:
                 # Some options take the next word as their value (-i and -I on macOS, -l, --line-length),
-                # and the tools disagree on which. With one of them present the first three words are
-                # all looked at; a file name among them does no harm.
+                # and the tools disagree on which. With one of them present every plain word
+                # is looked at as a possible script.
                 value_opt = any(re.match(r"^-[a-zA-Z]*[iIl]$", a) or re.match(r"^--l[a-z-]*$", a) for a in args)
-                scripts += plain_words[:3] if value_opt else plain_words[:1]
+                scripts += plain_words if value_opt else plain_words[:1]
 
             def subst_flags(script):
                 """The flags of every s command in a sed script. Any delimiter, backslashes honored."""
@@ -872,7 +872,7 @@ def analyze(cmd, cwd, depth=0):
                     block("sed script runs a command and the command line names a protected path: %s" % cmd)
             if any(a in ("-f", "--file") or a.startswith("--file=") or re.match(r"^-[a-zA-Z]*f$", a) for a in args) and mentions(cmd):
                 block("sed runs a script file the guard cannot read, and the command line names a protected path: %s" % cmd)
-            if any(re.match(r"^-[a-zA-Z]*i", a) or a.startswith("--in-place") for a in args):
+            if any(re.match(r"^-[a-zA-Z]*[iI]", a) or a.startswith("--in-place") for a in args):
                 for p in plain:
                     check_target(p, "sed -i")
             return

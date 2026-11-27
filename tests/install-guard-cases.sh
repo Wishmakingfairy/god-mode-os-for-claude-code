@@ -348,6 +348,8 @@ CASES = [
  ("w189", "block", "sed line-length option with its value in front of a script that runs a command", bash("sed -l 1 '1e rm @H/.claude/settings.json' notes.txt")),
  ("w190", "block", "sed macOS in-place option with an empty suffix in front of a script that writes", bash("sed -I '' 'w @H/.claude/settings.json' notes.txt")),
  ("w191", "block", "sed second address with a letter delimiter in front of a letter-delimited substitution", bash("sed '/a/,\\cbcsxaxbxe' @H/.claude/settings.json")),
+ ("w192", "block", "sed with the same value option three times in front of a script that runs a command", bash("sed -l 1 -l 2 -l 3 '1e rm @H/.claude/settings.json' notes.txt")),
+ ("w193", "block", "sed macOS in-place option edits the settings file", bash("sed -I .bak 's/a/b/' @H/.claude/settings.json")),
  ("r69", "pass", "awk comparison with a greater-than sign while reading the settings file", bash("awk '$1 > 3' @H/.claude/settings.json")),
  ("r70", "pass", "sed prints lines of the settings file", bash("sed -n '1,5p' @H/.claude/settings.json")),
  ("r71", "pass", "zip a copy of the skills folder into another folder", bash("zip -r @H/backup/skills.zip @H/.claude/skills")),
