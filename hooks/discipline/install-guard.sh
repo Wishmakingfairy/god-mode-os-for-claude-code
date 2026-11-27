@@ -830,8 +830,11 @@ def analyze(cmd, cwd, depth=0):
                     plain_words.append(a)
                 k += 1
             if not explicit:
-                # macOS sed takes the word after -i as a suffix, GNU sed does not: look at both words
-                scripts += plain_words[:2] if any(re.match(r"^-[a-zA-Z]*i$", a) for a in args) else plain_words[:1]
+                # Some options take the next word as their value (-i and -I on macOS, -l, --line-length),
+                # and the tools disagree on which. With one of them present the first three words are
+                # all looked at; a file name among them does no harm.
+                value_opt = any(re.match(r"^-[a-zA-Z]*[iIl]$", a) or re.match(r"^--l[a-z-]*$", a) for a in args)
+                scripts += plain_words[:3] if value_opt else plain_words[:1]
 
             def subst_flags(script):
                 """The flags of every s command in a sed script. Any delimiter, backslashes honored."""
@@ -861,8 +864,8 @@ def analyze(cmd, cwd, depth=0):
             for a in scripts:
                 writes = re.search(r"(^|[;{}\s/])[wW]\s+\S", a)
                 runs = re.search(r"(^|[;{}\s\d$])e(\s|$)", a) or any("e" in f for f in subst_flags(a))
-                if re.search(r"(^|[;{}\n\s])\\[A-Za-z]", a):
-                    runs = True  # an address with a letter as its delimiter: the guard does not read past it
+                if re.search(r"(^|[;{}\n\s,!])\\[^/\n]", a):
+                    runs = True  # an address with a delimiter of its own: the guard does not read past it
                 if writes and (mentions(a) or ("$" in a and mentions(cmd))):
                     block("sed script writes to a protected path in: %s" % cmd)
                 if runs and mentions(cmd):
