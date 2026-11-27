@@ -792,44 +792,77 @@ def analyze(cmd, cwd, depth=0):
             return
 
         if verb == "sed":
-            # the w / W commands of a sed script write to the file they name
-            # every word that is not an option is looked at: with -e several scripts can be given,
-            # and tools disagree on which word is the script
-            scripts = [a.split("=", 1)[1] if a.startswith("--expression=") else a
-                       for a in args if not a.startswith("-") or a.startswith("--expression=")]
-            scripts += [m.group(1) for m in (re.match(r"^-[a-zA-Z]*?e(.+)$", a) for a in args
-                                             if not a.startswith("--")) if m]
+            # Which words are scripts is decided the way sed decides it: every -e / --expression value,
+            # or, when there is none and no script file, the first plain word. File names are not scripts.
+            scripts, plain_words, explicit, k = [], [], False, 0
+            while k < len(args):
+                a = args[k]
+                if a.startswith("--"):
+                    name = a.split("=", 1)[0]
+                    if len(name) >= 3 and "--expression".startswith(name):
+                        explicit = True
+                        if "=" in a:
+                            scripts.append(a.split("=", 1)[1])
+                        elif k + 1 < len(args):
+                            scripts.append(args[k + 1])
+                            k += 1
+                    elif len(name) >= 3 and "--file".startswith(name):
+                        explicit = True
+                elif a.startswith("-") and len(a) > 1:
+                    for pos in range(1, len(a)):
+                        ch = a[pos]
+                        if ch == "e":
+                            explicit = True
+                            if a[pos + 1:]:
+                                scripts.append(a[pos + 1:])
+                            elif k + 1 < len(args):
+                                scripts.append(args[k + 1])
+                                k += 1
+                            break
+                        if ch == "f":
+                            explicit = True
+                            if not a[pos + 1:]:
+                                k += 1
+                            break
+                        if ch in "il":
+                            break  # may carry a glued value
+                else:
+                    plain_words.append(a)
+                k += 1
+            if not explicit:
+                # macOS sed takes the word after -i as a suffix, GNU sed does not: look at both words
+                scripts += plain_words[:2] if any(re.match(r"^-[a-zA-Z]*i$", a) for a in args) else plain_words[:1]
 
             def subst_flags(script):
-                """The flags of every s command in a sed script. Honors the delimiter and backslashes."""
+                """The flags of every s command in a sed script. Any delimiter, backslashes honored."""
                 found, pos = [], 0
                 while pos < len(script) - 1:
-                    # An s command can follow anything except a lower-case letter: an address may end in
-                    # a delimiter of its own or in an upper-case flag. Inside a file name the letter before
-                    # it is lower case ("skills/..."), and that is the one case left out.
-                    prev = script[pos - 1] if pos else ""
-                    at_command = not (prev.islower() or prev == "_")
                     d = script[pos + 1]
-                    if script[pos] == "s" and at_command and not (d.isalnum() or d.isspace() or d == "\\"):
-                        q, fields = pos + 2, 0
-                        while q < len(script) and fields < 2:
-                            if script[q] == "\\":
-                                q += 2
+                    if script[pos] == "s" and d not in "\\\n" and not d.isspace():
+                        prev = script[pos - 1] if pos else ""
+                        strict = (not prev) or prev in ";{}\n!$,/IM" or prev.isdigit() or prev.isspace()
+                        if strict or not d.isalnum():
+                            q, fields = pos + 2, 0
+                            while q < len(script) and fields < 2:
+                                if script[q] == "\\":
+                                    q += 2
+                                    continue
+                                if script[q] == d:
+                                    fields += 1
+                                q += 1
+                            if fields == 2:
+                                m = re.match(r"[a-zA-Z0-9]*", script[q:])
+                                found.append(m.group(0))
+                                pos = q + len(m.group(0))
                                 continue
-                            if script[q] == d:
-                                fields += 1
-                            q += 1
-                        if fields == 2:
-                            m = re.match(r"[a-zA-Z0-9]*", script[q:])
-                            found.append(m.group(0))
-                            pos = q + len(m.group(0))
-                            continue
                     pos += 1
                 return found
 
             for a in scripts:
                 writes = re.search(r"(^|[;{}\s/])[wW]\s+\S", a)
                 runs = re.search(r"(^|[;{}\s\d$])e(\s|$)", a) or any("e" in f for f in subst_flags(a))
+                if re.search(r"(^|[;{}\n\s])\\[A-Za-z]", a):
+                    runs = True  # an address with a letter as its delimiter: the guard does not read past it
                 if writes and (mentions(a) or ("$" in a and mentions(cmd))):
                     block("sed script writes to a protected path in: %s" % cmd)
                 if runs and mentions(cmd):
