@@ -42,7 +42,7 @@ TRANSCRIPT_PATH=$(echo "$INPUT" | jq -r '.transcript_path // empty')
 
 # The final reply. Claude Code hands it over in the hook input (last_assistant_message); at that
 # moment it is often not written to the transcript yet. The transcript is the fallback.
-LAST_MSG=$(echo "$INPUT" | jq -r '.last_assistant_message // empty' 2>/dev/null)
+LAST_MSG=$(echo "$INPUT" | jq -r '.last_assistant_message | if type == "string" then . elif type == "array" then (map(select(.type? == "text") | .text) | join("\n")) else empty end' 2>/dev/null)
 [ -z "$LAST_MSG" ] && LAST_MSG=$(jq -rs '[.[] | select(.message.role? == "assistant" or .role? == "assistant")] | last | (.message.content? // .content? // []) | if type == "array" then map(select(.type? == "text") | .text) | join("\n") else tostring end' "$TRANSCRIPT_PATH" 2>/dev/null)
 
 [ -z "$LAST_MSG" ] && exit 0

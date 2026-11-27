@@ -17,6 +17,7 @@
 # GMOS_PROTECT_CLAUDE_MD=0 stops treating every CLAUDE.md as protected.
 
 set -u
+[ -z "${HOME:-}" ] && exit 0
 
 GMOS_HOME="${GMOS_HOME:-$HOME/.god-mode-os}"
 KILL_SWITCH="${GMOS_KILL_SWITCH:-$HOME/.claude/.god-mode-disabled}"
@@ -62,6 +63,7 @@ print(cur if isinstance(cur, str) else "")' "$1" 2>/dev/null
     json_string() { python3 -I -c 'import json, sys; print(json.dumps(sys.argv[1]))' "$1" 2>/dev/null; }
 else
     >&2 echo "install-guard: neither jq nor python3 found, this tool call was NOT checked (warning only)"
+    log_event "gate-error" "\"jq and python3 missing, call not checked\""
     exit 0
 fi
 
@@ -342,7 +344,9 @@ WRAPPERS = {"timeout": ("-s", "-k", "--signal", "--kill-after"), "gtimeout": ("-
             "arch": (), "nohup": (), "time": ()}
 # Commands that only read their arguments. Any other command that is pointed straight at a
 # protected path is blocked, because the guard cannot know what it does there.
-READERS = {"cat", "ls", "ll", "grep", "egrep", "fgrep", "rg", "ag", "head", "tail", "wc", "jq", "yq", "diff",
+READERS = {"gitleaks", "semgrep", "mcp-scan", "socket", "openssl", "sha512sum", "b3sum", "gstat", "colordiff",
+           "icdiff", "ack", "ugrep", "expand", "fold", "paste", "iconv",
+           "cat", "ls", "ll", "grep", "egrep", "fgrep", "rg", "ag", "head", "tail", "wc", "jq", "yq", "diff",
            "cmp", "comm", "stat", "file", "less", "more", "bat", "open", "shasum", "sha1sum", "sha256sum",
            "md5", "md5sum", "cksum", "sort", "uniq", "cut", "awk", "gawk", "tr", "basename", "dirname",
            "realpath", "readlink", "du", "df", "tree", "test", "[", "[[", "echo", "printf", "for", "select",
@@ -358,6 +362,8 @@ READER_WRITE_FLAGS = {
     "sort": r"^(-o|--output(=.*)?|-[a-zA-Z]*o)$", "zip": r"^-[a-zA-Z]*m[a-zA-Z]*$", "xxd": r"^-[a-zA-Z]*r[a-zA-Z]*$",
     "base64": r"^(-o|--output(=.*)?)$", "plutil": r"^-(replace|insert|remove|convert|extract|create)$",
     "jq": r"^$", "open": r"^$", "code": r"^$",
+    "gitleaks": r"^(-r|--report-path(=.*)?)$", "semgrep": r"^(-o|--output(=.*)?|--autofix|--json-output(=.*)?)$",
+    "openssl": r"^-(out|writerand)$", "iconv": r"^(-o|--output(=.*)?)$", "socket": r"^(fix|--fix)$",
 }
 # Flags that mean "write the result back into the file", used for tools the guard does not know.
 REWRITE_FLAGS = ("--write", "-w", "-i", "--in-place", "--inplace", "--fix", "--overwrite", "-rm")
@@ -748,7 +754,9 @@ def analyze(cmd, cwd, depth=0):
                 # option, the macOS tools and strict mode read it and what follows as files. When that
                 # happens the guard cannot know which word is the destination, so every word is checked.
                 first_file = next((k for k, a in enumerate(args) if not a.startswith("-")), None)
-                if first_file is not None and any(a.startswith("-") and len(a) > 1 for a in args[first_file + 1:]):
+                late = [k for k, a in enumerate(args) if first_file is not None and k > first_file
+                        and a.startswith("-") and len(a) > 1]
+                if late and any(not a.startswith("-") for a in args[late[0] + 1:]):
                     for p in plain:
                         check_target(p, verb)
                 if t_seen:
@@ -780,16 +788,28 @@ def analyze(cmd, cwd, depth=0):
 
         if verb == "sed":
             # the w / W commands of a sed script write to the file they name
-            for a in args:
+            scripts, k = [], 0
+            while k < len(args):
+                a = args[k]
                 if a.startswith("--expression="):
-                    a = a.split("=", 1)[1]
-                elif a.startswith("-"):
+                    scripts.append(a.split("=", 1)[1])
+                elif a in ("-e", "--expression") and k + 1 < len(args):
+                    scripts.append(args[k + 1])
+                    k += 1
+                elif a.startswith("-") and not a.startswith("--"):
                     glued = re.match(r"^-[a-zA-Z]*?e(.+)$", a)
-                    if not glued or a.startswith("--"):
-                        continue  # a pure option flag
-                    a = glued.group(1)
+                    if glued:
+                        scripts.append(glued.group(1))
+                k += 1
+            if not scripts and plain:
+                scripts = [plain[0]]  # with no -e the first plain word is the script
+            for a in scripts:
                 writes = re.search(r"(^|[;{}\s/])[wW]\s+\S", a)
-                runs = re.search(r"(^|[;{}\s\d$])e(\s|$)", a) or re.search(r"s([^\w\s]).*?\1.*?\1[gpIi0-9]*e\b", a)
+                runs = re.search(r"(^|[;{}\s\d$])e(\s|$)", a)
+                for part in re.split(r"[;\n]", a):  # one substitution at a time: is "e" among its flags
+                    sm = re.match(r"^[^s]*s([^\w\s])(?:(?!\1).)*\1(?:(?!\1).)*\1([a-zA-Z0-9]*)", part)
+                    if sm and "e" in sm.group(2):
+                        runs = True
                 if writes and (mentions(a) or ("$" in a and mentions(cmd))):
                     block("sed script writes to a protected path in: %s" % cmd)
                 if runs and mentions(cmd):
@@ -903,6 +923,13 @@ def analyze(cmd, cwd, depth=0):
         if "=" in verb:
             return
         reader = verb in READERS
+        if verb in ("npx", "uvx", "bunx", "pnpx"):
+            # a tool started through a runner is judged as that tool
+            inner = next((a for a in args if not a.startswith("-")), "")
+            inner = os.path.basename(inner).split("@")[0]
+            if inner in READERS and not (inner in READER_WRITE_FLAGS and any(
+                    re.match(READER_WRITE_FLAGS[inner], a) for a in args if a.startswith("-"))):
+                return
         if verb in ("awk", "gawk", "mawk", "nawk"):
             # an awk program can redirect, pipe or run a shell command by itself
             v_values = [args[k + 1] for k, a in enumerate(args[:-1]) if a in ("-v", "--assign")]
@@ -982,6 +1009,8 @@ def analyze(cmd, cwd, depth=0):
             path, dyn = resolve(p)
             if dyn or not path:
                 continue
+            if not ("/" in p or "." in p or p.startswith("~") or os.path.lexists(path)):
+                continue  # a sub-command word such as "test" or "list", not a file
             if hit_listed(path) or (rewrites and hit(path)):
                 block("'%s' is not a known read-only command and is pointed at a protected path (%s) in: %s" % (verb, path, cmd))
 
