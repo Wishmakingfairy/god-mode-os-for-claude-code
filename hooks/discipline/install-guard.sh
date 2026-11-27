@@ -344,7 +344,7 @@ WRAPPERS = {"timeout": ("-s", "-k", "--signal", "--kill-after"), "gtimeout": ("-
             "arch": (), "nohup": (), "time": ()}
 # Commands that only read their arguments. Any other command that is pointed straight at a
 # protected path is blocked, because the guard cannot know what it does there.
-READERS = {"gitleaks", "semgrep", "mcp-scan", "socket", "openssl", "sha512sum", "b3sum", "gstat", "colordiff",
+READERS = {"gitleaks", "mcp-scan", "sha512sum", "b3sum", "gstat", "colordiff",
            "icdiff", "ack", "ugrep", "expand", "fold", "paste", "iconv",
            "cat", "ls", "ll", "grep", "egrep", "fgrep", "rg", "ag", "head", "tail", "wc", "jq", "yq", "diff",
            "cmp", "comm", "stat", "file", "less", "more", "bat", "open", "shasum", "sha1sum", "sha256sum",
@@ -362,9 +362,14 @@ READER_WRITE_FLAGS = {
     "sort": r"^(-o|--output(=.*)?|-[a-zA-Z]*o)$", "zip": r"^-[a-zA-Z]*m[a-zA-Z]*$", "xxd": r"^-[a-zA-Z]*r[a-zA-Z]*$",
     "base64": r"^(-o|--output(=.*)?)$", "plutil": r"^-(replace|insert|remove|convert|extract|create)$",
     "jq": r"^$", "open": r"^$", "code": r"^$",
-    "gitleaks": r"^(-r|--report-path(=.*)?)$", "semgrep": r"^(-o|--output(=.*)?|--autofix|--json-output(=.*)?)$",
-    "openssl": r"^-(out|writerand)$", "iconv": r"^(-o|--output(=.*)?)$", "socket": r"^(fix|--fix)$",
+    "gitleaks": r"^(-r|--report-path(=.*)?|--log-opts(=.*)?)$", "iconv": r"^(-o|--output(=.*)?)$",
 }
+# Scanners that may be started through a package runner (npx, uvx ...) and still count as readers.
+# The name must be given bare: no path, no version, no runner option.
+RUNNER_SAFE = {"mcp-scan", "gitleaks"}
+# Tools whose first words are sub-commands, not file names (npm test, docker ps, brew list ...).
+SUBCOMMAND_TOOLS = {"npm", "pnpm", "yarn", "bun", "docker", "brew", "ollama", "pip", "pip3", "launchctl", "vercel",
+                    "supabase", "cargo", "go", "kubectl", "gh", "git", "ps", "kill", "say", "netlify", "wrangler"}
 # Flags that mean "write the result back into the file", used for tools the guard does not know.
 REWRITE_FLAGS = ("--write", "-w", "-i", "--in-place", "--inplace", "--fix", "--overwrite", "-rm")
 # Wrappers of the form "<tool> run <command>".
@@ -788,28 +793,40 @@ def analyze(cmd, cwd, depth=0):
 
         if verb == "sed":
             # the w / W commands of a sed script write to the file they name
-            scripts, k = [], 0
-            while k < len(args):
-                a = args[k]
-                if a.startswith("--expression="):
-                    scripts.append(a.split("=", 1)[1])
-                elif a in ("-e", "--expression") and k + 1 < len(args):
-                    scripts.append(args[k + 1])
-                    k += 1
-                elif a.startswith("-") and not a.startswith("--"):
-                    glued = re.match(r"^-[a-zA-Z]*?e(.+)$", a)
-                    if glued:
-                        scripts.append(glued.group(1))
-                k += 1
-            if not scripts and plain:
-                scripts = [plain[0]]  # with no -e the first plain word is the script
+            # every word that is not an option is looked at: with -e several scripts can be given,
+            # and tools disagree on which word is the script
+            scripts = [a.split("=", 1)[1] if a.startswith("--expression=") else a
+                       for a in args if not a.startswith("-") or a.startswith("--expression=")]
+            scripts += [m.group(1) for m in (re.match(r"^-[a-zA-Z]*?e(.+)$", a) for a in args
+                                             if not a.startswith("--")) if m]
+
+            def subst_flags(script):
+                """The flags of every s command in a sed script. Honors the delimiter and backslashes."""
+                found, pos = [], 0
+                while pos < len(script) - 1:
+                    before = script[:pos].rstrip()
+                    at_command = (not before) or before[-1] in ";{}\n!,$/" or before[-1].isdigit()
+                    d = script[pos + 1]
+                    if script[pos] == "s" and at_command and not (d.isalnum() or d.isspace() or d == "\\"):
+                        q, fields = pos + 2, 0
+                        while q < len(script) and fields < 2:
+                            if script[q] == "\\":
+                                q += 2
+                                continue
+                            if script[q] == d:
+                                fields += 1
+                            q += 1
+                        if fields == 2:
+                            m = re.match(r"[a-zA-Z0-9]*", script[q:])
+                            found.append(m.group(0))
+                            pos = q + len(m.group(0))
+                            continue
+                    pos += 1
+                return found
+
             for a in scripts:
                 writes = re.search(r"(^|[;{}\s/])[wW]\s+\S", a)
-                runs = re.search(r"(^|[;{}\s\d$])e(\s|$)", a)
-                for part in re.split(r"[;\n]", a):  # one substitution at a time: is "e" among its flags
-                    sm = re.match(r"^[^s]*s([^\w\s])(?:(?!\1).)*\1(?:(?!\1).)*\1([a-zA-Z0-9]*)", part)
-                    if sm and "e" in sm.group(2):
-                        runs = True
+                runs = re.search(r"(^|[;{}\s\d$])e(\s|$)", a) or any("e" in f for f in subst_flags(a))
                 if writes and (mentions(a) or ("$" in a and mentions(cmd))):
                     block("sed script writes to a protected path in: %s" % cmd)
                 if runs and mentions(cmd):
@@ -925,9 +942,8 @@ def analyze(cmd, cwd, depth=0):
         reader = verb in READERS
         if verb in ("npx", "uvx", "bunx", "pnpx"):
             # a tool started through a runner is judged as that tool
-            inner = next((a for a in args if not a.startswith("-")), "")
-            inner = os.path.basename(inner).split("@")[0]
-            if inner in READERS and not (inner in READER_WRITE_FLAGS and any(
+            inner = args[0] if args else ""
+            if inner in RUNNER_SAFE and not (inner in READER_WRITE_FLAGS and any(
                     re.match(READER_WRITE_FLAGS[inner], a) for a in args if a.startswith("-"))):
                 return
         if verb in ("awk", "gawk", "mawk", "nawk"):
@@ -1009,7 +1025,7 @@ def analyze(cmd, cwd, depth=0):
             path, dyn = resolve(p)
             if dyn or not path:
                 continue
-            if not ("/" in p or "." in p or p.startswith("~") or os.path.lexists(path)):
+            if verb in SUBCOMMAND_TOOLS and not ("/" in p or "." in p or p.startswith("~") or os.path.lexists(path)):
                 continue  # a sub-command word such as "test" or "list", not a file
             if hit_listed(path) or (rewrites and hit(path)):
                 block("'%s' is not a known read-only command and is pointed at a protected path (%s) in: %s" % (verb, path, cmd))
