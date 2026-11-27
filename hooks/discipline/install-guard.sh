@@ -648,7 +648,15 @@ def analyze(cmd, cwd, depth=0):
                 any(os.path.basename(a) in WRITE_VERBS or os.path.basename(a) in SHELLS for a in args)
             if exec_writes or any(a == "-delete" or a.startswith("-fprint") for a in args):
                 roots = []
-                for a in args:
+                rest = list(args)
+                # leading global options come before the start folders; -f names a start folder itself
+                while rest and rest[0] in ("-H", "-L", "-P", "-E", "-X", "-d", "-s", "-x", "-f", "--"):
+                    if rest[0] == "-f" and len(rest) > 1:
+                        roots.append(rest[1])
+                        rest = rest[2:]
+                    else:
+                        rest = rest[1:]
+                for a in rest:
                     if a.startswith("-") or a in ("(", "!"):
                         break
                     roots.append(a)
@@ -688,13 +696,16 @@ def analyze(cmd, cwd, depth=0):
         if verb in LAST_ARG:
             if not plain:
                 return
-            if any(a in ("-t", "--target-directory") or a.startswith("--target-directory=") for a in args):
+            # a link (symbolic or hard) to a protected place lets a later command write through another name
+            makes_link = verb == "ln" or (verb == "cp" and any(
+                re.match(r"^-[a-zA-Z]*[sl]", a) or a in ("--symbolic-link", "--link") for a in args))
+            if any(a in ("-t", "--target-directory") or a.startswith("--target-directory=")
+                   or re.match(r"^-[a-zA-Z]*t$", a) for a in args):
                 for p in plain:
-                    check_target(p, verb, ancestor=verb in ANCESTOR_TOO)
+                    check_target(p, verb, ancestor=makes_link or verb in ANCESTOR_TOO)
                 return
             dest = plain[-1]
-            # a link to a protected place lets a later command write through another name
-            if verb == "ln" or (verb == "cp" and any(re.match(r"^-[a-zA-Z]*s", a) or a == "--symbolic-link" for a in args)):
+            if makes_link:
                 for src in plain[:-1]:
                     check_target(src, verb, ancestor=True)
             if verb == "mv" or "--remove-source-files" in args:
