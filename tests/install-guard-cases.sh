@@ -321,6 +321,8 @@ CASES = [
  ("w172", "block", "copy into the hooks folder with a value option placed after the destination", bash("cp @H/work/x.sh @H/.claude/hooks/x.sh -S .bak")),
  ("w173", "block", "strict option mode makes the last word the destination again", bash("POSIXLY_CORRECT=1 cp @H/work/a.sh -t @H/work/b @H/.claude/hooks")),
  ("r88", "pass", "copy between ordinary folders with a value option placed last", bash("cp @H/work/a.txt @H/work/b.txt -S .bak")),
+ ("w174", "block", "an option after the first file: on macOS the word after it is the destination", bash("cp @H/work/a.sh -S @H/.claude/hooks")),
+ ("r89", "pass", "an option after the first file, between ordinary folders", bash("cp @H/work/a.txt -v @H/work/b.txt")),
  ("r69", "pass", "awk comparison with a greater-than sign while reading the settings file", bash("awk '$1 > 3' @H/.claude/settings.json")),
  ("r70", "pass", "sed prints lines of the settings file", bash("sed -n '1,5p' @H/.claude/settings.json")),
  ("r71", "pass", "zip a copy of the skills folder into another folder", bash("zip -r @H/backup/skills.zip @H/.claude/skills")),

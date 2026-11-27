@@ -744,8 +744,11 @@ def analyze(cmd, cwd, depth=0):
                     for p in plain:
                         check_target(p, verb, ancestor=True)
                     return
-                if "POSIXLY_CORRECT" in cmd:
-                    # in strict mode options after the first operand are operands: any word may be the destination
+                # Tools disagree on an option that comes after the first file: GNU still reads it as an
+                # option, the macOS tools and strict mode read it and what follows as files. When that
+                # happens the guard cannot know which word is the destination, so every word is checked.
+                first_file = next((k for k, a in enumerate(args) if not a.startswith("-")), None)
+                if first_file is not None and any(a.startswith("-") and len(a) > 1 for a in args[first_file + 1:]):
                     for p in plain:
                         check_target(p, verb)
                 if t_seen:
