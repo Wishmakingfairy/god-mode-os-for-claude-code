@@ -744,9 +744,17 @@ def analyze(cmd, cwd, depth=0):
                     for p in plain:
                         check_target(p, verb, ancestor=True)
                     return
+                if "POSIXLY_CORRECT" in cmd:
+                    # in strict mode options after the first operand are operands: any word may be the destination
+                    for p in plain:
+                        check_target(p, verb)
                 if t_seen:
                     check_target(os.path.join(t_val, "x"), verb)
                     plain = sources + [t_val]
+                else:
+                    plain = sources  # without the values that belong to options
+                if not plain:
+                    return
             dest = plain[-1]
             if makes_link:
                 for src in plain[:-1]:
