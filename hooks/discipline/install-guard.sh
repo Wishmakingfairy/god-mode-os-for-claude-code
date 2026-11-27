@@ -701,16 +701,52 @@ def analyze(cmd, cwd, depth=0):
             # a link (symbolic or hard) to a protected place lets a later command write through another name
             makes_link = verb == "ln" or (verb == "cp" and any(
                 re.match(r"^-[a-zA-Z]*[sl]", a) or a.startswith("--l") or a.startswith("--sy") for a in args))
-            glued_targets = [a.split("=", 1)[1] for a in args if a.startswith("--t") and "=" in a]
-            glued_targets += [m.group(1) for m in (re.match(r"^-[a-zA-Z]*?t(.+)$", a) for a in args
-                                                   if not a.startswith("--")) if m]
-            if glued_targets or any(a == "--target-directory" or re.match(r"^-[a-zA-Z]*t$", a) for a in args):
-                for g in glued_targets:
-                    check_target(g, verb, bulk=verb in ANCESTOR_TOO)
-                    check_target(os.path.join(g, "x"), verb)
-                for p in plain:
-                    check_target(p, verb, ancestor=makes_link or verb in ANCESTOR_TOO)
-                return
+            # The target-folder option (cp, mv, ln, install only; for rsync -t means "keep times").
+            # Read the options the way the tool does: a bundle stops at the first letter that takes a
+            # value, and a long option may be shortened to any prefix. Once the target folder is known,
+            # it becomes the destination and the ordinary checks below run on it.
+            takes_value = {"cp": "S", "mv": "S", "ln": "S", "install": "Sgom"}.get(verb)
+            if takes_value is not None:
+                t_seen, t_val, sources, k = False, None, [], 0
+                while k < len(args):
+                    a = args[k]
+                    if a == "--":
+                        sources += args[k + 1:]
+                        break
+                    if a.startswith("--"):
+                        name = a.split("=", 1)[0]
+                        if len(name) >= 3 and "--target-directory".startswith(name):
+                            t_seen = True
+                            if "=" in a:
+                                t_val = a.split("=", 1)[1]
+                            elif k + 1 < len(args):
+                                t_val = args[k + 1]
+                                k += 1
+                    elif a.startswith("-") and len(a) > 1:
+                        for pos in range(1, len(a)):
+                            ch = a[pos]
+                            if ch == "t":
+                                t_seen = True
+                                if a[pos + 1:]:
+                                    t_val = a[pos + 1:]
+                                elif k + 1 < len(args):
+                                    t_val = args[k + 1]
+                                    k += 1
+                                break
+                            if ch in takes_value:
+                                if not a[pos + 1:]:
+                                    k += 1  # its value is the next word
+                                break
+                    else:
+                        sources.append(a)
+                    k += 1
+                if t_seen and t_val is None:
+                    for p in plain:
+                        check_target(p, verb, ancestor=True)
+                    return
+                if t_seen:
+                    check_target(os.path.join(t_val, "x"), verb)
+                    plain = sources + [t_val]
             dest = plain[-1]
             if makes_link:
                 for src in plain[:-1]:
