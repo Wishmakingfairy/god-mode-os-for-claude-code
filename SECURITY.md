@@ -32,7 +32,7 @@ In scope:
 
 Out of scope:
 
-- An agent finding the documented `GMOS_ADMIN_OVERRIDE=1` escape hatch (this is intended)
+- A session started with `GMOS_ADMIN_OVERRIDE=1`, which turns every hook off (this is intended)
 - A user with shell access modifying their own config
 
 ## Tier 2 Postgres credentials

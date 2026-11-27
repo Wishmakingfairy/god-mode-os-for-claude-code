@@ -1,0 +1,13 @@
+{
+  "name": "god-mode-os",
+  "version": "0.2.0",
+  "description": "Discipline hooks for Claude Code: guards your Claude config against agent writes, blocks unbacked file and number claims, and keeps session notes out of your repos. Local only.",
+  "author": {
+    "name": "Harald Gabrans Zukovs",
+    "url": "https://github.com/Wishmakingfairy"
+  },
+  "homepage": "https://github.com/Wishmakingfairy/god-mode-os-for-claude-code",
+  "repository": "https://github.com/Wishmakingfairy/god-mode-os-for-claude-code",
+  "license": "MIT",
+  "keywords": ["hooks", "guardrails", "discipline", "claude-code"]
+}

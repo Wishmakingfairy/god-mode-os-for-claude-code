@@ -6,15 +6,15 @@ What to set when the repo goes public. Apply via the GitHub UI ("About" cog on t
 
 Plain text. Shows under the repo name in search results and on the repo home.
 
-> Discipline hooks for Claude Code. Stop the agent from claiming "done" without proof, block accidental writes to ~/.claude config, and route prompts to skills via local pgvector with zero Anthropic tokens.
+> Hooks for Claude Code. It asks before changing its own rules and config, and names a source for its percentages. Measured with and without the plugin. Runs locally, no telemetry.
 
-Length: 215 chars. Under the limit, no truncation in search.
+Length: 174 chars. Under the limit, no truncation in search.
 
 Alternate (shorter, punchier):
 
-> Hooks that make Claude Code stop lying about "done", plus a router that stops it from burning your quota.
+> Hooks that make Claude Code ask before it changes its own rules and config.
 
-Length: 105 chars. Use this if the longer one feels heavy.
+Length: 75 chars. Use this if the longer one feels heavy.
 
 ## Topics (up to 20 allowed; using 12)
 
@@ -57,7 +57,7 @@ Spec:
 - Should show the wedge sentence and the discipline GIF first frame as a still
 
 For v0.1, generate a static PNG using VHS or hand-compose one. Suggested layout:
-- Top half: text wedge "The hooks that make Claude stop lying about done."
+- Top half: text wedge "Claude Code asks before it changes its own rules and config."
 - Bottom half: still frame from `docs/demos/discipline.gif` showing the BLOCK message
 - Bottom-right corner: "github.com/Wishmakingfairy/god-mode-os-for-claude-code" in monospace
 
@@ -67,7 +67,7 @@ If skipping for v0.1, GitHub falls back to the README hero GIF auto-cropped, whi
 
 ```bash
 gh repo edit Wishmakingfairy/god-mode-os-for-claude-code \
-    --description "Discipline hooks for Claude Code. Stop the agent from claiming 'done' without proof, block accidental writes to ~/.claude config, and route prompts to skills via local pgvector with zero Anthropic tokens." \
+    --description "Hooks for Claude Code. It asks before changing its own rules and config, and names a source for its percentages. Measured with and without the plugin. Runs locally, no telemetry." \
     --add-topic claude-code \
     --add-topic claude-code-hooks \
     --add-topic ai-agents \

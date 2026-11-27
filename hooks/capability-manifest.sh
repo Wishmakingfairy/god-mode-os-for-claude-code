@@ -1,56 +1,59 @@
 #!/bin/bash
 # capability-manifest.sh : SessionStart hook.
-# Injects a LIVE, accurate capability inventory so the assistant never falsely claims it
-# lacks a skill / MCP / tool that is actually available. Local-only, no network calls.
-# Fast and fail-safe: on any error it emits a minimal manifest and exits 0.
+# Adds a short, live inventory of what is installed (skills, MCP servers, plugins) to the start
+# of the session, so the assistant does not claim it lacks a tool that is actually there.
+# Local only, no network calls. Fail-safe: on any error it prints a one-line note and exits 0.
 
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH"
 
-python3 - <<'PYEOF' 2>/dev/null || echo '{"additionalContext":"Capability note: you have a skill-router (search_skills/get_skill) plus MCP servers. Never claim you lack a skill/tool/browser without first calling search_skills or checking /mcp."}'
+KILL_SWITCH="${GMOS_KILL_SWITCH:-$HOME/.claude/.god-mode-disabled}"
+[ -f "$KILL_SWITCH" ] && exit 0
+
+FALLBACK='{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"Capability note: before claiming you cannot do something, check the installed skills and run /mcp to see connected servers."}}'
+
+python3 - <<'PYEOF' 2>/dev/null || echo "$FALLBACK"
 import json, glob, pathlib
 HOME = pathlib.Path.home()
 
-# MCP servers (from .mcp.json), the real configured set
+# MCP servers the user has configured (names only)
 mcps = []
-try:
-    d = json.load(open(HOME/".claude"/".mcp.json"))
-    mcps = list((d.get("mcpServers") or {}).keys())
-except Exception:
-    pass
+for cfg in (HOME / ".claude.json", HOME / ".claude" / ".mcp.json"):
+    try:
+        d = json.load(open(cfg))
+        for name in (d.get("mcpServers") or {}).keys():
+            if name not in mcps:
+                mcps.append(name)
+    except Exception:
+        pass
 
-# Skill counts (active pool + library), best-effort
-_JUNK = ("node_modules", ".venv", "site-packages", "skills-archive", "__pycache__")
+# Skill count, best effort
+_JUNK = ("node_modules", ".venv", "site-packages", "__pycache__")
 def count_skills(root):
     try:
-        return sum(1 for p in glob.iglob(str(root/"**"/"SKILL.md"), recursive=True)
+        return sum(1 for p in glob.iglob(str(root / "**" / "SKILL.md"), recursive=True)
                    if not any(j in p for j in _JUNK))
     except Exception:
         return 0
-active = count_skills(HOME/".claude"/"skills")
-library = count_skills(HOME/".claude"/"skills-library")
+skills = count_skills(HOME / ".claude" / "skills")
 
-# Plugins
+# Plugins (folder names only)
 plugins = []
 try:
-    pdir = HOME/".claude"/"plugins"
+    pdir = HOME / ".claude" / "plugins"
     if pdir.exists():
-        plugins = [p.name for p in pdir.iterdir() if p.is_dir() and not p.name.startswith(".")][:20]
+        skip = {"cache", "marketplaces", "data", "repos"}
+        plugins = sorted(p.name for p in pdir.iterdir()
+                         if p.is_dir() and not p.name.startswith(".") and p.name not in skip)[:20]
 except Exception:
     pass
 
-router = "skill-router" in mcps
-parts = []
-parts.append(f"LIVE CAPABILITY MANIFEST (session start). Skills reachable: ~{active+library} "
-             f"(active {active} + library {library}).")
-if router:
-    parts.append("Skill access: call search_skills(query) to find relevant skills from the full bank, "
-                 "then get_skill(name) to load one. Do not rely on the in-context skill list alone.")
-parts.append("MCP servers configured: " + (", ".join(mcps) if mcps else "(none found)") + ".")
+parts = ["Installed capabilities at session start. Skills in ~/.claude/skills: %d." % skills]
+parts.append("MCP servers configured: " + (", ".join(mcps[:30]) if mcps else "none found") + ".")
 if plugins:
-    parts.append("Plugins: " + ", ".join(plugins) + ".")
-parts.append("RULE: before claiming you cannot do something (browse, search, use a tool/skill/MCP), "
-             "first call search_skills or check /mcp. MCP tools may be DEFERRED (loaded on search), so "
-             "absence from the in-context list does NOT mean the capability is missing. Distinguish "
-             "'not connected' (fix it) from 'connected but not yet loaded' (search/load it).")
-print(json.dumps({"additionalContext": " ".join(parts)}))
+    parts.append("Plugin folders: " + ", ".join(plugins) + ".")
+parts.append("Before claiming you cannot do something (browse, search, use a tool, skill or server), "
+             "check the skill list and /mcp first. A tool that is not loaded yet is not the same as "
+             "a tool that is missing: say which of the two it is.")
+print(json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart",
+                                         "additionalContext": " ".join(parts)}}))
 PYEOF

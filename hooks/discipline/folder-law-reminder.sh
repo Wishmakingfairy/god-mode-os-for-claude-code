@@ -1,11 +1,13 @@
 #!/bin/bash
-# folder-law-reminder.sh — PreToolUse hook
-# Blocks writes to forbidden locations (default: /tmp).
+# folder-law-reminder.sh : PreToolUse hook
+# Speaks up when the agent writes to a place where files get lost or pile up.
+# Default paths: /tmp (cleared on reboot) and ~/Downloads (clutter).
+#
+# Default mode is WARN: the write goes through and the agent is told to pick a durable place.
+# Set GMOS_FOLDER_LAW=block to stop the write instead.
 #
 # Honors kill switch and admin override (same as install-guard.sh).
 # Config: edit ~/.god-mode-os/forbidden-write-paths.txt to customize.
-#
-# Default forbidden paths: /tmp (files lost), ~/Downloads (clutter).
 
 set -u
 
@@ -50,19 +52,27 @@ is_forbidden_target() {
     return 1
 }
 
-block_msg() {
+MODE="${GMOS_FOLDER_LAW:-warn}"
+
+# Either blocks (exit 2 + stderr) or warns (exit 0 + context for the agent), depending on MODE.
+flag() {
     local target="$1"
-    >&2 echo "FOLDER LAW BLOCKED: write to forbidden path: $target"
-    >&2 echo "Forbidden paths: ${FORBIDDEN_PATHS[*]}"
-    >&2 echo "Edit $CONFIG_FILE to change, or run with GMOS_ADMIN_OVERRIDE=1."
+    if [ "$MODE" = "block" ]; then
+        >&2 echo "FOLDER LAW BLOCKED: write to forbidden path: $target"
+        >&2 echo "Forbidden paths: ${FORBIDDEN_PATHS[*]}"
+        >&2 echo "Edit $CONFIG_FILE to change, or pick another folder."
+        exit 2
+    fi
+    jq -cn --arg t "$target" --arg p "${FORBIDDEN_PATHS[*]}" \
+        '{hookSpecificOutput:{hookEventName:"PreToolUse",additionalContext:("Folder note: this writes to " + $t + ", a place where files get lost or pile up (" + $p + "). If the file should be kept, write it inside the project instead.")}}'
+    exit 0
 }
 
 case "$TOOL" in
     Write|Edit|MultiEdit)
         FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty' 2>/dev/null)
         if [ -n "$FILE_PATH" ] && is_forbidden_target "$FILE_PATH"; then
-            block_msg "$FILE_PATH"
-            exit 2
+            flag "$FILE_PATH"
         fi
         ;;
     Bash)
@@ -71,8 +81,7 @@ case "$TOOL" in
         for path in "${FORBIDDEN_PATHS[@]}"; do
             if echo "$CMD" | grep -qE "(>|>>|tee|mkdir|touch)\\s+$path" || \
                echo "$CMD" | grep -qE "\\b(cp|mv)\\b[^#]*\\s$path/?(\\s|\$)"; then
-                block_msg "$path (in command: $CMD)"
-                exit 2
+                flag "$path"
             fi
         done
         ;;

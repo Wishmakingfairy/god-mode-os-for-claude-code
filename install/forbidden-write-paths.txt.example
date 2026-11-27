@@ -1,5 +1,5 @@
 # god-mode-os: folder-law-reminder forbidden write paths
-# One path per line. Writes (Write/Edit/Bash output) to these paths are blocked.
+# One path per line. Writes (Write/Edit/Bash output) to these paths get a warning (a block with GMOS_FOLDER_LAW=block).
 # Copy to ~/.god-mode-os/forbidden-write-paths.txt to use.
 
 /tmp

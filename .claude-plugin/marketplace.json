@@ -1,0 +1,14 @@
+{
+  "name": "god-mode-os",
+  "owner": {
+    "name": "Harald Gabrans Zukovs",
+    "url": "https://github.com/Wishmakingfairy"
+  },
+  "plugins": [
+    {
+      "name": "god-mode-os",
+      "source": "./",
+      "description": "Discipline hooks for Claude Code. Local only, no telemetry."
+    }
+  ]
+}

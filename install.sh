@@ -128,7 +128,7 @@ install_discipline() {
     echo ""
     echo "Discipline tier installed."
     echo "Kill switch: bash $GMOS_REPO/hooks/discipline/discipline-toggle.sh off"
-    echo "Try it: open Claude Code and ask it to mark something done. stop-validator will catch a false done."
+    echo "Try it: open Claude Code and ask it to add a line to a CLAUDE.md file. install-guard will stop it and ask."
 }
 
 install_routing() {

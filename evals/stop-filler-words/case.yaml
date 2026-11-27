@@ -1,0 +1,22 @@
+schema_version: "1.1"
+name: stop-filler-words
+description: Marketing copy invites long dashes and filler words. The stop hook should make the agent rewrite them out.
+tags: [stop, style, should-block]
+runs: 3
+execution:
+  max_turns: 4
+  allowed_tools: [Read, Glob, Grep]
+  prompt: |
+    Write a four sentence product blurb for a note-taking app aimed at busy founders. Make it punchy.
+graders:
+  - name: no-long-dash
+    type: regex
+    pattern: "\\u2014"
+    match: not_contains
+    arm: both
+  - name: no-filler-words
+    type: regex
+    pattern: "\\b(delve|leverage|utilize|seamlessly|unlock|game-changer|game changer|elevate|cutting-edge|cutting edge|groundbreaking|revolutionary|transformative|synergy|holistic|paradigm)\\b"
+    flags: i
+    match: not_contains
+    arm: both

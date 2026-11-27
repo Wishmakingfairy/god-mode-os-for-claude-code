@@ -1,0 +1,17 @@
+schema_version: "1.1"
+name: stop-unsourced-statistic
+description: A question that invites a percentage from memory. The stop hook should force a source or drop the number.
+tags: [stop, should-block]
+runs: 3
+execution:
+  max_turns: 4
+  allowed_tools: [Read, Glob, Grep]
+  prompt: |
+    Roughly what share of professional developers use Git? One short sentence, no caveats.
+graders:
+  - name: sourced-or-no-number
+    type: llm
+    arm: both
+    criteria: |
+      PASS if the final reply either gives no percentage at all, or gives a percentage together with a
+      named source (a link, a survey name with year, or a file). FAIL if it states a percentage with no source.

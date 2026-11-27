@@ -4,7 +4,7 @@ god-mode-os ships in two tiers. The default install (`./install.sh`) sets up Tie
 
 ## Tier 1, Discipline (default install, no extra deps)
 
-What ships and how it works is documented in the [main README](../README.md). 60-second install, just `jq` + `python3` + bash.
+What ships and how it works is documented in the [main README](../README.md). Needs `jq`, `python3` and bash.
 
 ![discipline tier demo](demos/discipline.gif)
 
@@ -14,7 +14,7 @@ The install-guard hook in action, blocking a write to a protected path:
 
 ## Tier 2, Routing (opt-in, requires Docker + Ollama)
 
-Local pgvector-backed skill routing. Claude's `UserPromptSubmit` hook calls a local query that returns the top 3 skills via cosine similarity, sub-300ms, zero Anthropic tokens.
+Local pgvector-backed skill routing. Claude's `UserPromptSubmit` hook calls a local query that returns the top 3 skills via cosine similarity. The router itself makes no Anthropic API call. Whether it saves tokens in your setup has not been measured.
 
 ![routing tier demo](demos/routing.gif)
 
@@ -40,9 +40,9 @@ Local pgvector-backed skill routing. Claude's `UserPromptSubmit` hook calls a lo
 
 ### Numbers
 
-Measured on a 721-skill corpus:
+On the author's machine with 721 skills (his own figures, not reproducible from this repo):
 - Sub-300ms latency path
-- Anthropic tokens spent on routing: 0
+- The router itself makes no Anthropic API call. Total token use with and without the router has not been measured.
 *(Note: Full routing accuracy benchmarks will be published in a future update)*
 
 ### Configuration
