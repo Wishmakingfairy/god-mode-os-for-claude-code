@@ -650,8 +650,10 @@ def analyze(cmd, cwd, depth=0):
                 roots = []
                 rest = list(args)
                 # leading global options come before the start folders; -f names a start folder itself
-                while rest and rest[0] in ("-H", "-L", "-P", "-E", "-X", "-d", "-s", "-x", "-f", "--"):
-                    if rest[0] == "-f" and len(rest) > 1:
+                while rest and (re.match(r"^-[HLPEXdsxf]+$", rest[0]) or rest[0] in ("-D", "--") or re.match(r"^-O\d*$", rest[0])):
+                    if rest[0] == "-D" and len(rest) > 1:
+                        rest = rest[2:]
+                    elif not rest[0].startswith("-O") and "f" in rest[0] and len(rest) > 1:
                         roots.append(rest[1])
                         rest = rest[2:]
                     else:
@@ -698,9 +700,14 @@ def analyze(cmd, cwd, depth=0):
                 return
             # a link (symbolic or hard) to a protected place lets a later command write through another name
             makes_link = verb == "ln" or (verb == "cp" and any(
-                re.match(r"^-[a-zA-Z]*[sl]", a) or a in ("--symbolic-link", "--link") for a in args))
-            if any(a in ("-t", "--target-directory") or a.startswith("--target-directory=")
-                   or re.match(r"^-[a-zA-Z]*t$", a) for a in args):
+                re.match(r"^-[a-zA-Z]*[sl]", a) or a.startswith("--l") or a.startswith("--sy") for a in args))
+            glued_targets = [a.split("=", 1)[1] for a in args if a.startswith("--t") and "=" in a]
+            glued_targets += [m.group(1) for m in (re.match(r"^-[a-zA-Z]*?t(.+)$", a) for a in args
+                                                   if not a.startswith("--")) if m]
+            if glued_targets or any(a == "--target-directory" or re.match(r"^-[a-zA-Z]*t$", a) for a in args):
+                for g in glued_targets:
+                    check_target(g, verb, bulk=verb in ANCESTOR_TOO)
+                    check_target(os.path.join(g, "x"), verb)
                 for p in plain:
                     check_target(p, verb, ancestor=makes_link or verb in ANCESTOR_TOO)
                 return
