@@ -804,8 +804,11 @@ def analyze(cmd, cwd, depth=0):
                 """The flags of every s command in a sed script. Honors the delimiter and backslashes."""
                 found, pos = [], 0
                 while pos < len(script) - 1:
-                    before = script[:pos].rstrip()
-                    at_command = (not before) or before[-1] in ";{}\n!,$/" or before[-1].isdigit()
+                    # An s command can follow anything except a lower-case letter: an address may end in
+                    # a delimiter of its own or in an upper-case flag. Inside a file name the letter before
+                    # it is lower case ("skills/..."), and that is the one case left out.
+                    prev = script[pos - 1] if pos else ""
+                    at_command = not (prev.islower() or prev == "_")
                     d = script[pos + 1]
                     if script[pos] == "s" and at_command and not (d.isalnum() or d.isspace() or d == "\\"):
                         q, fields = pos + 2, 0

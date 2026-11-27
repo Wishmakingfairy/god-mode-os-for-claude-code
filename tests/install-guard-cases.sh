@@ -339,6 +339,8 @@ CASES = [
  ("w182", "block", "an unknown tool makes a new file while sitting inside the hooks folder", bash("sometool newhook", cwd="@H/.claude/hooks")),
  ("w183", "block", "openssl writes its output into the hooks folder", bash("openssl enc -in x.txt -out @H/.claude/hooks/x.sh")),
  ("w184", "block", "a runner with a pinned other version of a scanner name", bash("npx evil/mcp-scan @H/.claude/settings.json")),
+ ("w185", "block", "sed run flag behind an address with a case flag", bash("sed '/x/Is/a/b/e' @H/.claude/settings.json")),
+ ("w186", "block", "sed run flag behind an address with its own delimiter", bash("sed '\\%x%s/a/b/e' @H/.claude/settings.json")),
  ("r69", "pass", "awk comparison with a greater-than sign while reading the settings file", bash("awk '$1 > 3' @H/.claude/settings.json")),
  ("r70", "pass", "sed prints lines of the settings file", bash("sed -n '1,5p' @H/.claude/settings.json")),
  ("r71", "pass", "zip a copy of the skills folder into another folder", bash("zip -r @H/backup/skills.zip @H/.claude/skills")),
