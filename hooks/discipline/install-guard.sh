@@ -321,7 +321,9 @@ def code_writes_protected(verb, code):
     if re.match(r"^python[\d.]*$", verb) and not PY_SHELL.search(code):
         def blank(m):
             lit = next((g for g in m.groups() if g is not None), "")
-            return m.group(0) if not re.search(r"\s", lit) else '""'
+            looks_like_path = re.match(r"^(/|~|\$HOME|\$\{HOME\}|\.{1,2}/|\.claude|\.agents)", lit) and \
+                re.search(r"\.claude|\.agents|CLAUDE\.md|\.god-mode-os", lit)  # a path with a space in it, not a sentence
+            return m.group(0) if (looks_like_path or not re.search(r"\s", lit)) else '""'
         return mentions(PY_STRING.sub(blank, code))
     return mentions(code)
 
@@ -642,7 +644,9 @@ def analyze(cmd, cwd, depth=0):
                 return
 
         if verb == "find":
-            if any(a == "-delete" or a.startswith("-fprint") for a in args):
+            exec_writes = any(a in ("-exec", "-execdir", "-ok", "-okdir") for a in args) and \
+                any(os.path.basename(a) in WRITE_VERBS or os.path.basename(a) in SHELLS for a in args)
+            if exec_writes or any(a == "-delete" or a.startswith("-fprint") for a in args):
                 roots = []
                 for a in args:
                     if a.startswith("-") or a in ("(", "!"):
@@ -689,6 +693,10 @@ def analyze(cmd, cwd, depth=0):
                     check_target(p, verb, ancestor=verb in ANCESTOR_TOO)
                 return
             dest = plain[-1]
+            # a link to a protected place lets a later command write through another name
+            if verb == "ln" or (verb == "cp" and any(re.match(r"^-[a-zA-Z]*s", a) or a == "--symbolic-link" for a in args)):
+                for src in plain[:-1]:
+                    check_target(src, verb, ancestor=True)
             if verb == "mv" or "--remove-source-files" in args:
                 for src in plain[:-1]:
                     check_target(src, verb, ancestor=True)

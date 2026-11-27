@@ -9,7 +9,7 @@
 - stop-validator: the final reply is now taken from the hook input. Before, the hook read the transcript, where the final reply is often not written yet, so it could judge nothing.
 - `push-gate` hook, off by default. When switched on, a publish command (`git push`, `gh repo create`, `gh pr create` and similar) needs a fresh, single-use approval that names the owner and the visibility.
 - `dash-guard` hook, off by default. Stops long dashes being written into files.
-- Test suites in `tests/`: 230 guard cases, 38 stop-validator cases, 57 cases for the small hooks. CI runs them on Linux and macOS.
+- Test suites in `tests/`: 235 guard cases, 38 stop-validator cases, 57 cases for the small hooks. CI runs them on Linux and macOS.
 - `evals/`: 9 with/without cases for `claude plugin eval`.
 
 ### Changed
