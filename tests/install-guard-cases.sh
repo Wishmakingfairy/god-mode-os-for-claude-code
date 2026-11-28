@@ -362,6 +362,7 @@ CASES = [
  ("r99", "pass", "check a plugin folder", bash("claude plugin validate .")),
  ("r100", "pass", "append to a notes file whose name ends in the rules file name", bash("echo x >> @H/work/NOTES-ON-CLAUDE.md")),
  ("r101", "pass", "list the configured servers", bash("claude mcp list")),
+ ("w202", "block", "python builds the rules file name from pieces and writes it", bash("python3 -c \"open('%s/CLAUDE.md' % d, 'w').write('x')\"")),
  ("r69", "pass", "awk comparison with a greater-than sign while reading the settings file", bash("awk '$1 > 3' @H/.claude/settings.json")),
  ("r70", "pass", "sed prints lines of the settings file", bash("sed -n '1,5p' @H/.claude/settings.json")),
  ("r71", "pass", "zip a copy of the skills folder into another folder", bash("zip -r @H/backup/skills.zip @H/.claude/skills")),

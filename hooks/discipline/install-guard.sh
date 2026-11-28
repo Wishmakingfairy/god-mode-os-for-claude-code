@@ -153,7 +153,7 @@ legacy_bash_check() {
                 block "write/move/delete targeting protected path in: $CMD"
             fi
         done
-        if [ "$PROTECT_CLAUDE_MD" != "0" ] && echo "$CMD_EXPANDED" | grep -qiE '(^|[^[:alnum:]_.-])CLAUDE\.md'; then
+        if [ "$PROTECT_CLAUDE_MD" != "0" ] && echo "$CMD_EXPANDED" | grep -qiF 'claude.md'; then
             block "write/move/delete targeting CLAUDE.md in: $CMD"
         fi
     fi
@@ -298,7 +298,8 @@ def mentions(text):
     low = expand_home(text).lower()
     if any(p in low for p in PROT_DIRS_L + PROT_FILES_L):
         return True
-    if PROTECT_RULES_FILE and re.search(r"(?<![\w.-])CLAUDE\.md", text, re.I):
+    # unresolved text: any mention counts (a name built from pieces must not slip through)
+    if PROTECT_RULES_FILE and "claude.md" in text.lower():
         return True
     if ".agents" in low and "skills" in low:
         return True
