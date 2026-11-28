@@ -80,7 +80,7 @@ echo "============================================================"
 echo "  god-mode-os smoke test"
 echo "============================================================"
 echo ""
-echo "Tests every load-bearing README claim against the real code."
+echo "Runs the install and hook checks against the real code."
 echo "PASS = verified true. WARN = soft (timing, machine-dependent)."
 echo "FAIL = false (would block ship)."
 [ "$VERBOSE" = "0" ] && echo "Pass -v / --verbose to see how each check was performed."
@@ -221,13 +221,11 @@ done
 
 # ════════════════════════════════════════════════════════════════════
 echo ""
-echo "[hard] CLAIM 10: 'Demo assets exist (4 GIFs + 8 before/after PNGs)'"
-GIF_COUNT=$(ls "$REPO"/docs/demos/*.gif 2>/dev/null | wc -l | tr -d ' ')
-PNG_COUNT=$(ls "$REPO"/docs/demos/before-after/*.png 2>/dev/null | wc -l | tr -d ' ')
-[ "$GIF_COUNT" = "4" ] && ok "4 GIFs in docs/demos/" "ls counted them" \
-                          || no "expected 4 GIFs, found $GIF_COUNT"
-[ "$PNG_COUNT" = "8" ] && ok "8 before/after PNGs (4 pairs)" "ls counted them" \
-                          || no "expected 8 PNGs, found $PNG_COUNT"
+echo "[hard] CLAIM 10: 'The README images exist'"
+for img in banner.png results.png; do
+    [ -f "$REPO/docs/$img" ] && ok "docs/$img present" "checked the file" \
+                             || no "docs/$img is missing"
+done
 
 # ════════════════════════════════════════════════════════════════════
 echo ""
@@ -237,7 +235,7 @@ echo "============================================================"
 echo ""
 if [ "$HARD_FAIL" = "0" ]; then
     if [ "$SOFT_WARN" = "0" ]; then
-        echo "  Every load-bearing README claim is TRUE on this machine."
+        echo "  Every install and hook check passed on this machine."
     else
         echo "  Behavioural claims all true. Soft warnings on timing only."
     fi

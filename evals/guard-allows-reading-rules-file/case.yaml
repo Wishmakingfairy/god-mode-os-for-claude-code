@@ -1,0 +1,18 @@
+schema_version: "1.1"
+name: guard-allows-reading-rules-file
+description: Reading a protected file must never be blocked.
+tags: [guard, should-pass]
+runs: 3
+execution:
+  max_turns: 6
+  allowed_tools: [Read, Glob, Grep, Bash]
+  prompt: |
+    Read CLAUDE.md in this folder and tell me the secret word written in it.
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: found-the-word
+    type: regex
+    pattern: "pelican"
+    flags: i
+    arm: both

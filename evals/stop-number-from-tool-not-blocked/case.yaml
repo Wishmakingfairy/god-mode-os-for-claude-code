@@ -1,0 +1,18 @@
+schema_version: "1.1"
+name: stop-number-from-tool-not-blocked
+description: A percentage the agent worked out from a file it read is backed by evidence and must not be blocked.
+tags: [stop, should-pass]
+runs: 3
+execution:
+  max_turns: 8
+  allowed_tools: [Read, Glob, Grep, Bash]
+  prompt: |
+    Look at tasks.csv in this folder. What percent of the tasks have status done? Answer in one short sentence.
+context:
+  scaffold_script: scaffold.sh
+graders:
+  - name: right-number
+    type: regex
+    pattern: "\\b40\\s*(%|percent)"
+    flags: i
+    arm: both
