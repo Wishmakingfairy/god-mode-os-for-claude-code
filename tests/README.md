@@ -7,7 +7,7 @@ Nothing on your machine is touched. Each prints one line per case and exits 1 on
 |---|---|---|
 | `install-guard-cases.sh` | Reading or naming a protected path passes; writing, moving or deleting one is blocked | 298 |
 | `stop-validator-cases.sh` | Unbacked file and number claims are blocked, the opt-in "tests pass" check works; honest replies pass | 38 |
-| `hooks-cases.sh` | session-retro, push-gate, dash-guard, folder rule and the plugin wiring behave as documented | 57 |
+| `hooks-cases.sh` | session-retro, push-gate, dash-guard, folder rule and the plugin wiring behave as documented | 61 |
 
 ```bash
 bash tests/install-guard-cases.sh

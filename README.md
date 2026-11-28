@@ -70,7 +70,7 @@ To remove: `/plugin uninstall god-mode-os`, or `./uninstall.sh` (add `--purge` t
 bash smoke.sh                        # 22 install and hook checks
 bash tests/install-guard-cases.sh    # 298 guard cases
 bash tests/stop-validator-cases.sh   # 38 stop hook cases
-bash tests/hooks-cases.sh            # 57 cases for the other hooks
+bash tests/hooks-cases.sh            # 61 cases for the other hooks
 ```
 
 All four run in a throwaway home folder and touch nothing of yours. CI runs them on every push, on Linux and macOS.

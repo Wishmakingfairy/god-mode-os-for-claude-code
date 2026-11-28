@@ -44,6 +44,9 @@ mkdir -p "$T/gitproj/sub" && git -C "$T/gitproj" init -q
 echo "{\"transcript_path\":\"$TRANSCRIPT\",\"cwd\":\"$T/gitproj\"}" | bash "$RETRO" >/dev/null 2>&1
 [ ! -d "$T/gitproj/docs/retros" ]; truth r01 $? "no retro is written inside a git repo (it could be committed by accident)"
 ls "$HOME/.god-mode-os/retros/"*/*.md >/dev/null 2>&1; truth r02 $? "the retro for a git repo goes to ~/.god-mode-os/retros instead"
+echo "{\"transcript_path\":\"$TRANSCRIPT\",\"cwd\":\"$T/gitproj\"}" | bash "$RETRO" >/dev/null 2>&1
+[ "$(grep -c . "$HOME/.god-mode-os/retros/INDEX.md")" = "1" ]; truth r06 $? "a second run for the same session adds no second index line"
+! grep -rqi "linkedin" "$HOME/.god-mode-os/retros/"; truth r07 $? "the retro file carries no personal profile link"
 
 rm -rf "$HOME/.god-mode-os/retros"
 echo "{\"transcript_path\":\"$TRANSCRIPT\",\"cwd\":\"$T/gitproj/sub\"}" | bash "$RETRO" >/dev/null 2>&1
@@ -157,6 +160,11 @@ law_in "/tmp/notes.txt" | GMOS_FOLDER_LAW=block bash "$LAW" >/dev/null 2>&1
 check l03 2 "$?" "with GMOS_FOLDER_LAW=block the same write is blocked"
 out=$(law_in "$T/plainproj/notes.txt" | bash "$LAW" 2>/dev/null); rc=$?
 [ "$rc" = "0" ] && [ -z "$out" ]; truth l04 $? "a write elsewhere passes silently"
+out=$(law_in "/tmpl/notes.txt" | bash "$LAW" 2>/dev/null); rc=$?
+[ "$rc" = "0" ] && [ -z "$out" ]; truth l05 $? "a folder whose name only starts like /tmp is not flagged"
+out=$(law_in "/private/tmp/notes.txt" | bash "$LAW" 2>/dev/null)
+echo "$out" | jq -e '.hookSpecificOutput.additionalContext' >/dev/null 2>&1
+truth l06 $? "the real macOS path of /tmp is flagged too"
 
 # ---------- capability-manifest ----------
 out=$(echo '{}' | bash "$REPO/hooks/capability-manifest.sh" 2>/dev/null)

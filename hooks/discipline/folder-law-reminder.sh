@@ -42,10 +42,21 @@ else
     )
 fi
 
+# On macOS /tmp and /var are links into /private. Both spellings mean the same folder.
+plain_path() {
+    local p="${1%/}"
+    case "$p" in /private/tmp|/private/tmp/*|/private/var|/private/var/*) p="${p#/private}" ;; esac
+    printf '%s' "$p"
+}
+
+# A target matches when it IS a listed folder or sits inside one. "/tmpl" does not match "/tmp".
 is_forbidden_target() {
-    local target="$1"
+    local target path
+    target=$(plain_path "$1")
     for path in "${FORBIDDEN_PATHS[@]}"; do
-        if [[ "$target" == "$path"* ]]; then
+        path=$(plain_path "$path")
+        [ -z "$path" ] && continue
+        if [ "$target" = "$path" ] || [[ "$target" == "$path/"* ]]; then
             return 0
         fi
     done
