@@ -97,6 +97,7 @@ fi
 PROTECTED_PATHS+=(
     "$KILL_SWITCH"
     "$CONFIG_FILE"
+    "$EVENT_LOG"
     "$GMOS_HOME/forbidden-write-paths.txt"
     "$GMOS_HOME/push-gate-on"
     "$GMOS_HOME/dash-guard-on"
@@ -109,7 +110,7 @@ is_protected_path() {
             return 0
         fi
     done
-    if [ "$PROTECT_CLAUDE_MD" != "0" ] && [[ "$target" == *"CLAUDE.md"* ]]; then
+    if [ "$PROTECT_CLAUDE_MD" != "0" ] && [ "$(basename "$target" | tr '[:upper:]' '[:lower:]')" = "claude.md" ]; then
         return 0
     fi
     return 1
@@ -139,7 +140,7 @@ legacy_bash_check() {
     if echo "$CMD" | grep -qE '(npx|bunx|pnpx|pnpm[[:space:]]+dlx|npm[[:space:]]+exec)[[:space:]]+(-y[[:space:]]+|--yes[[:space:]]+)?skills(@[^[:space:]]*)?[[:space:]]+(add|install|i|update)'; then
         block "skills CLI install: $CMD"
     fi
-    if echo "$CMD" | grep -qE '(claude[[:space:]]+mcp[[:space:]]+add|claude[[:space:]]+plugin[[:space:]]+install)'; then
+    if echo "$CMD" | grep -qE '(claude[[:space:]]+mcp[[:space:]]+add|claude[[:space:]]+plugin[[:space:]]+(install|i|add|marketplace[[:space:]]+add)([[:space:]]|$))'; then
         block "Claude Code install command: $CMD"
     fi
     if echo "$CMD" | grep -qE 'git[[:space:]]+clone.*\.claude/(skills|plugins|hooks|commands)'; then
@@ -152,7 +153,7 @@ legacy_bash_check() {
                 block "write/move/delete targeting protected path in: $CMD"
             fi
         done
-        if [ "$PROTECT_CLAUDE_MD" != "0" ] && [[ "$CMD_EXPANDED" == *"CLAUDE.md"* ]]; then
+        if [ "$PROTECT_CLAUDE_MD" != "0" ] && echo "$CMD_EXPANDED" | grep -qiE '(^|[^[:alnum:]_.-])CLAUDE\.md'; then
             block "write/move/delete targeting CLAUDE.md in: $CMD"
         fi
     fi
@@ -238,7 +239,7 @@ def hit(path):
         return True
     for v in variants(path):
         low = v.lower()
-        if PROTECT_RULES_FILE and ("CLAUDE.md" in v or os.path.basename(low) == "claude.md"):
+        if PROTECT_RULES_FILE and (os.path.basename(low) == "claude.md" or "/claude.md/" in low):
             return True
     return False
 
@@ -297,7 +298,7 @@ def mentions(text):
     low = expand_home(text).lower()
     if any(p in low for p in PROT_DIRS_L + PROT_FILES_L):
         return True
-    if PROTECT_RULES_FILE and "CLAUDE.md" in text:
+    if PROTECT_RULES_FILE and re.search(r"(?<![\w.-])CLAUDE\.md", text, re.I):
         return True
     if ".agents" in low and "skills" in low:
         return True
@@ -607,7 +608,8 @@ def analyze(cmd, cwd, depth=0):
             return
 
         if verb == "claude":
-            if ("mcp" in args and "add" in args) or ("plugin" in args and "install" in args):
+            if ("mcp" in args and any(a.startswith("add") for a in args)) or \
+                    ("plugin" in args and any(a in ("install", "i", "add") for a in args)):
                 block("Claude Code install command: " + cmd)
             return
 
